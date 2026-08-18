@@ -120,7 +120,10 @@
                             $isDueSoon = !is_null($rem) && $rem <= 1;
                             $isSettled = ($loan->outstanding_amount == 0) || ($loan->action_type === 'settle_loan' && $loan->settlement_type === 'all');
                         @endphp
-                        <tr class="transition-colors {{ $isSettled ? 'bg-emerald-50/80 border-l-4 border-l-emerald-500 hover:bg-emerald-100/60' : ($isDueSoon ? 'bg-amber-50/60 border-l-4 border-l-amber-500 hover:bg-amber-100/60' : 'hover:bg-[#fdf2f4]/30') }}">
+                        @php
+    $isExpired = (!is_null($rem) && $rem <= 0 && $loan->outstanding_amount > 0);
+@endphp
+<tr class="transition-colors {{ $isSettled ? 'bg-emerald-50/70 border-l-4 border-l-emerald-500 hover:bg-emerald-100/60' : ($isExpired ? 'bg-red-50/80 border-l-4 border-l-red-600 hover:bg-red-100/70' : ($isDueSoon ? 'bg-amber-50/70 border-l-4 border-l-amber-500 hover:bg-amber-100/60' : 'hover:bg-slate-50')) }}">
                             <td class="px-3 py-3 font-medium text-[#0f172a]">
                                 <span class="inline-block px-1.5 py-0.5 rounded bg-[#fdf2f4] text-[#c3122e] font-bold font-mono text-[10px] border border-[#f8d7da]">{{ $loan->bank->bank_code ?? '—' }}</span>
                                 <span class="ml-1 font-semibold">{{ $loan->bank->name ?? '—' }}</span>

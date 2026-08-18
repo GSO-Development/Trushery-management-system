@@ -98,7 +98,7 @@
                             $isMatured = $daysLeft !== null && $daysLeft < 0;
                             $isDueSoon = $daysLeft !== null && $daysLeft >= 0 && $daysLeft <= 7;
                         @endphp
-                        <tr class="transition-colors {{ $isMatured ? 'bg-red-50/70 border-l-4 border-l-red-500' : ($isDueSoon ? 'bg-amber-50/70 border-l-4 border-l-amber-500' : 'hover:bg-[#fdf2f4]/30') }}">
+                        <tr class="transition-colors {{ $isMatured ? 'bg-red-50/80 border-l-4 border-l-red-600 hover:bg-red-100/70' : ($isDueSoon ? 'bg-amber-50/70 border-l-4 border-l-amber-500 hover:bg-amber-100/60' : 'hover:bg-slate-50') }}">
                             <td class="px-3 py-3 font-medium text-[#0f172a]">
                                 <span class="inline-block px-1.5 py-0.5 rounded bg-[#fdf2f4] text-[#c3122e] font-bold font-mono text-[10px] border border-[#f8d7da]">{{ $fd->bank->bank_code ?? '—' }}</span>
                                 <span class="ml-1 font-semibold">{{ $fd->bank->name ?? '—' }}</span>

@@ -119,15 +119,21 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($loans as $loan)
                         @php
-                            $effectiveSettlement = $loan->revised_settlement_date ?? $loan->settlement_date;
-                            $daysOverdue = 0;
-                            if ($effectiveSettlement) {
-                                $daysOverdue = (int) now()->diffInDays($effectiveSettlement, false) * -1;
-                            }
-                            $isOverdue = $daysOverdue > 0;
-                            $isSettled = ($loan->outstanding_amount == 0) || ($loan->action_type === 'settle_loan' && $loan->settlement_type === 'all');
-                        @endphp
-                        <tr class="transition-colors {{ $isSettled ? 'bg-emerald-50/80 border-l-4 border-l-emerald-500' : ($isOverdue ? 'bg-red-50/70 border-l-4 border-l-red-500' : 'hover:bg-[#fdf2f4]/30') }}">
+    $effectiveSettlement = $loan->revised_settlement_date ?? $loan->settlement_date;
+    $daysOverdue = 0;
+    $daysLeft = null;
+    if ($effectiveSettlement) {
+        $dl = (int) now()->diffInDays($effectiveSettlement, false);
+        $daysLeft = $dl;
+        if ($dl < 0) {
+            $daysOverdue = abs($dl);
+        }
+    }
+    $isOverdue = $daysOverdue > 0 && $loan->outstanding_amount > 0;
+    $isCritical = ($daysLeft !== null && $daysLeft >= 0 && $daysLeft <= 7 && $loan->outstanding_amount > 0);
+    $isSettled = ($loan->outstanding_amount == 0) || ($loan->action_type === 'settle_loan' && $loan->settlement_type === 'all');
+@endphp
+<tr class="transition-colors {{ $isSettled ? 'bg-emerald-50/70 border-l-4 border-l-emerald-500 hover:bg-emerald-100/60' : ($isOverdue ? 'bg-red-50/80 border-l-4 border-l-red-600 hover:bg-red-100/70' : ($isCritical ? 'bg-amber-50/70 border-l-4 border-l-amber-500 hover:bg-amber-100/60' : 'hover:bg-slate-50')) }}">
                             <td class="px-3 py-3 font-medium text-[#0f172a]">
                                 <span class="inline-block px-1.5 py-0.5 rounded bg-[#fdf2f4] text-[#c3122e] font-bold font-mono text-[10px] border border-[#f8d7da]">{{ $loan->bank->bank_code ?? '—' }}</span>
                                 <span class="ml-1 font-semibold">{{ $loan->bank->name ?? '—' }}</span>

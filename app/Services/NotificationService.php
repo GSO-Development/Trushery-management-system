@@ -318,7 +318,7 @@ class NotificationService
         }
 
         // 1. Find all active groups with email notifications enabled
-        $activeGroups = Group::with(['users' => fn($q) => $q->where('is_active', true)])
+        $activeGroups = Group::with('users')
             ->where('email_notifications_enabled', true)
             ->get();
 
@@ -422,6 +422,153 @@ class NotificationService
             'message'          => $sentCount > 0
                 ? "Successfully dispatched {$sentCount} alert email(s) to " . count($uniqueRecipients) . " authorized recipient(s)."
                 : (count($errors) > 0 ? "Dispatch completed with errors: " . implode(', ', array_slice($errors, 0, 2)) : "No emails needed to be sent."),
+        ];
+    }
+
+    /**
+     * Dispatch automated 4-hourly recurring escalation emails for all RED / Overdue alerts.
+     * Continues sending every $cooldownHours (default 4 hours) until the facility is settled/renewed/fixed.
+     *
+     * @param int $cooldownHours
+     * @param bool $force
+     * @return array
+     */
+    public static function dispatchOverdueEscalations(int $cooldownHours = 4, bool $force = false): array
+    {
+        // 1. Fetch all active alerts across all companies
+        $allAlerts = self::getAlerts(null, 90);
+
+        // Filter ONLY RED / Overdue items
+        $overdueAlerts = array_filter($allAlerts, function ($a) {
+            return ($a['type'] === 'danger') || ($a['days_left'] < 0) || ($a['status_label'] === 'Overdue' || $a['status_label'] === 'Maturity / Overdue');
+        });
+
+        if (empty($overdueAlerts)) {
+            return [
+                'success'          => true,
+                'dispatched_count' => 0,
+                'overdue_count'    => 0,
+                'message'          => 'No RED / Overdue facilities found. All systems healthy.',
+            ];
+        }
+
+        // 2. Find all active groups with email notifications enabled
+        $activeGroups = Group::with('users')
+            ->where('email_notifications_enabled', true)
+            ->get();
+
+        if ($activeGroups->isEmpty()) {
+            return [
+                'success'          => false,
+                'dispatched_count' => 0,
+                'overdue_count'    => count($overdueAlerts),
+                'message'          => 'No active user groups have Email Notifications enabled.',
+            ];
+        }
+
+        $sentCount = 0;
+        $skippedCount = 0;
+        $uniqueRecipients = [];
+
+        foreach ($overdueAlerts as $alert) {
+            $alertCompanyId = $alert['company_id'] ?? null;
+            if (!$alertCompanyId) continue;
+
+            // Check if email was sent for this specific alert within the cooldown window (e.g. 4 hours)
+            if (!$force) {
+                $recentlySent = NotificationDispatch::where('alert_id', $alert['id'])
+                    ->where('status', 'sent')
+                    ->where('sent_at', '>=', now()->subHours($cooldownHours))
+                    ->exists();
+
+                if ($recentlySent) {
+                    $skippedCount++;
+                    continue; // Skip, sent within the last 4 hours
+                }
+            }
+
+            // Find eligible users for this alert
+            $eligibleUsers = collect();
+            foreach ($activeGroups as $group) {
+                $hasAccess = false;
+                if ($group->isGroup()) {
+                    $hasAccess = in_array((int)$alertCompanyId, $group->company_ids ?? [], true);
+                } else {
+                    $hasAccess = ($group->company_id == $alertCompanyId);
+                }
+
+                if ($hasAccess) {
+                    $eligibleUsers = $eligibleUsers->merge($group->users);
+                }
+            }
+
+            $eligibleUsers = $eligibleUsers->unique('id');
+
+            $daysOverdueText = $alert['days_left'] < 0 ? abs($alert['days_left']) . ' Day(s) Overdue' : 'Action Required / Tenor Expired';
+
+            foreach ($eligibleUsers as $user) {
+                if (empty($user->email)) continue;
+
+                $subject = "🚨 [URGENT OVERDUE ESCALATION] {$alert['company_name']} - {$alert['title']} ({$daysOverdueText})";
+
+                $body = "Dear {$user->name},\n\n"
+                    . "⚠️ URGENT TREASURY ESCALATION NOTICE\n"
+                    . "========================================================\n"
+                    . "This facility is currently in RED / OVERDUE status and requires immediate action.\n"
+                    . "Automated escalation reminders will continue to be dispatched every {$cooldownHours} hours until this item is resolved or renewed.\n\n"
+                    . "FACILITY DETAILS:\n"
+                    . "--------------------------------------------------------\n"
+                    . "• Category        : {$alert['category']}\n"
+                    . "• Entity / Company: {$alert['company_name']}\n"
+                    . "• Financial Inst. : {$alert['bank_name']} ({$alert['bank_code']})\n"
+                    . "• Reference / No. : {$alert['reference']}\n"
+                    . "• Exposure Amount : {$alert['currency']} " . number_format($alert['amount'], 2) . "\n"
+                    . "• Due Date        : {$alert['date']}\n"
+                    . "• Current Status  : 🔴 {$alert['status_label']} ({$daysOverdueText})\n\n"
+                    . "MESSAGE & REQUIRED ACTION:\n"
+                    . "{$alert['message']}\n\n"
+                    . "Please log in immediately to take appropriate settlement, renewal, or restructuring action:\n"
+                    . "👉 {$alert['url']}\n\n"
+                    . "--------------------------------------------------------\n"
+                    . "George Steuart Treasury Management System\n"
+                    . "Automated Overdue Escalation Engine (4-Hour Cycle)";
+
+                $mailResult = MailSettingService::sendTestMail($user->email, $subject, $body);
+
+                if ($mailResult['success']) {
+                    NotificationDispatch::create([
+                        'alert_id'        => $alert['id'],
+                        'company_id'      => $alertCompanyId,
+                        'user_id'         => $user->id,
+                        'recipient_email' => $user->email,
+                        'subject'         => $subject,
+                        'status'          => 'sent',
+                        'sent_at'         => now(),
+                    ]);
+                    $sentCount++;
+                    $uniqueRecipients[$user->email] = true;
+                } else {
+                    NotificationDispatch::create([
+                        'alert_id'        => $alert['id'],
+                        'company_id'      => $alertCompanyId,
+                        'user_id'         => $user->id,
+                        'recipient_email' => $user->email,
+                        'subject'         => $subject,
+                        'status'          => 'failed',
+                        'error_message'   => $mailResult['message'] ?? 'Unknown error',
+                        'sent_at'         => now(),
+                    ]);
+                }
+            }
+        }
+
+        return [
+            'success'          => true,
+            'dispatched_count' => $sentCount,
+            'skipped_count'    => $skippedCount,
+            'overdue_count'    => count($overdueAlerts),
+            'recipient_count'  => count($uniqueRecipients),
+            'message'          => "Overdue escalation dispatched: {$sentCount} email(s) sent across " . count($uniqueRecipients) . " user(s). ({$skippedCount} alert(s) within 4h cooldown).",
         ];
     }
 }

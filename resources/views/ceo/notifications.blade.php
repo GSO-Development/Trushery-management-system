@@ -25,7 +25,7 @@
     @endif
 
     {{-- Header --}}
-    <div class="bg-gradient-to-r from-[#0f172a] to-[#1e293b] rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff;" class="rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden border border-slate-800">
         <div class="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 rounded-full bg-[#c3122e]/10 blur-3xl pointer-events-none"></div>
         <div class="flex items-center gap-4 z-10">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#c3122e] to-[#e63956] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#c3122e]/40">
@@ -53,7 +53,7 @@
             </form>
 
             <a href="{{ route('group.dashboard') }}"
-               class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 border border-white/10">
+               style="background: rgba(255, 255, 255, 0.12); color: #ffffff;" class="px-4 py-2 rounded-xl hover:bg-white/20 text-xs font-bold transition-all flex items-center gap-2 border border-white/20 shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                 Group Overview
             </a>

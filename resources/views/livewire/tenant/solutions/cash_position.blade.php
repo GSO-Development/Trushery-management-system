@@ -108,19 +108,19 @@
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead>
-                    <tr class="border-b border-slate-200 bg-[#f1f5f9] text-slate-600 font-bold uppercase tracking-wider">
-                        <th class="px-4 py-3.5 text-left">Bank</th>
-                        <th class="px-4 py-3.5 text-left">Account Type</th>
-                        <th class="px-4 py-3.5 text-left font-mono">Account #</th>
-                        <th class="px-4 py-3.5 text-center">Currency</th>
-                        <th class="px-4 py-3.5 text-right">Opening Balance</th>
-                        <th class="px-4 py-3.5 text-right text-emerald-700">Inflows</th>
-                        <th class="px-4 py-3.5 text-right text-red-600">Outflows</th>
-                        <th class="px-4 py-3.5 text-right font-extrabold text-[#0f172a]">Closing Balance</th>
-                        <th class="px-4 py-3.5 text-right text-amber-700">Restricted Cash</th>
-                        <th class="px-4 py-3.5 text-right font-extrabold text-blue-700">Available Cash</th>
-                        <th class="px-4 py-3.5 text-right font-mono text-purple-700">USD Closing Balance</th>
-                        <th class="px-4 py-3.5 text-center">Action</th>
+                    <tr class="border-b border-slate-200 bg-[#f1f5f9] text-slate-900 font-extrabold uppercase tracking-wider text-[11px]">
+                        <th class="px-4 py-3.5 text-left text-slate-900">Bank</th>
+                        <th class="px-4 py-3.5 text-left text-slate-900">Account Type</th>
+                        <th class="px-4 py-3.5 text-left font-mono text-slate-900">Account #</th>
+                        <th class="px-4 py-3.5 text-center text-slate-900">Currency</th>
+                        <th class="px-4 py-3.5 text-right text-slate-900">Opening Balance</th>
+                        <th class="px-4 py-3.5 text-right text-slate-900">Inflows</th>
+                        <th class="px-4 py-3.5 text-right text-slate-900">Outflows</th>
+                        <th class="px-4 py-3.5 text-right font-black text-slate-900 bg-slate-200/70 border-x border-slate-300">Closing Balance</th>
+                        <th class="px-4 py-3.5 text-right text-slate-900">Restricted Cash</th>
+                        <th class="px-4 py-3.5 text-right font-black text-slate-900 bg-slate-200/70 border-x border-slate-300">Available Cash</th>
+                        <th class="px-4 py-3.5 text-right font-black text-slate-900 bg-slate-200/70 border-x border-slate-300 font-mono">USD Closing Balance</th>
+                        <th class="px-4 py-3.5 text-center text-slate-900">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -140,7 +140,11 @@
                                 $usdClosing = $usdExchangeRate > 0 ? ($close / $usdExchangeRate) : 0.00;
                             }
                         @endphp
-                        <tr class="hover:bg-slate-50 transition-colors">
+                        @php
+    $isNegativeOrZero = ($avail <= 0 && $open > 0);
+    $hasRestricted = ($restr > 0);
+@endphp
+<tr class="transition-colors {{ $isNegativeOrZero ? 'bg-red-50/70 border-l-4 border-l-red-600 hover:bg-red-100/70' : ($hasRestricted ? 'bg-amber-50/40 border-l-4 border-l-amber-400 hover:bg-amber-50/70' : 'hover:bg-slate-50') }}">
                             <td class="px-4 py-3.5 font-bold text-[#0f172a]">
                                 {{ $acct->bank->name ?? '—' }}
                                 <span class="block text-[10px] font-mono text-slate-400">{{ $acct->bank->bank_code ?? '' }}</span>
@@ -159,25 +163,25 @@
                                     {{ $acct->currency }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-medium text-slate-600">
+                            <td class="px-4 py-3.5 text-right font-mono font-semibold text-slate-900">
                                 {{ number_format($open, 2) }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-bold text-emerald-600">
+                            <td class="px-4 py-3.5 text-right font-mono font-bold text-emerald-700">
                                 {{ $in > 0 ? '+ '.number_format($in, 2) : '0.00' }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-bold text-red-600">
+                            <td class="px-4 py-3.5 text-right font-mono font-black text-red-700">
                                 {{ $out > 0 ? '- '.number_format($out, 2) : '0.00' }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-bold text-[#0f172a] bg-slate-50/50">
+                            <td class="px-4 py-3.5 text-right font-mono font-black text-slate-950 bg-slate-100/90 border-x border-slate-200">
                                 {{ number_format($close, 2) }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono text-amber-700 font-medium">
+                            <td class="px-4 py-3.5 text-right font-mono font-semibold text-slate-900">
                                 {{ number_format($restr, 2) }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-bold text-blue-700 bg-blue-50/30">
+                            <td class="px-4 py-3.5 text-right font-mono font-black text-slate-950 bg-slate-100/90 border-x border-slate-200">
                                 {{ number_format($avail, 2) }}
                             </td>
-                            <td class="px-4 py-3.5 text-right font-mono font-bold text-purple-700 bg-purple-50/20">
+                            <td class="px-4 py-3.5 text-right font-mono font-black text-slate-950 bg-slate-100/90 border-x border-slate-200">
                                 ${{ number_format($usdClosing, 2) }}
                             </td>
                             <td class="px-4 py-3.5 text-center">
