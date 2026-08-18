@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
         foreach ($sriLankaBanks as $bData) {
             $bank = Bank::firstOrCreate(
                 ['bank_code' => $bData['bank_code']],
-                $bData
+                ['name' => $bData['name']]
             );
             $bankMap[$bData['short_name']] = $bank;
             // also map trimmed common abbreviations

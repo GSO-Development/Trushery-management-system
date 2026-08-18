@@ -101,7 +101,7 @@ new #[Layout('layouts.admin')] class extends Component
                 ->latest()
                 ->paginate(10),
             'companies'       => Company::all(),
-            'groups'          => Group::when($this->companyId, fn($q) => $q->where('company_id', $this->companyId))->get(),
+            'groups'          => Group::when($this->companyId, fn($q) => $q->where('company_id', $this->companyId)->orWhere('group_type', 'group'))->orderBy('name')->get(),
             'allFilterGroups' => Group::with('company')->orderBy('name')->get(),
         ];
     }
@@ -246,44 +246,49 @@ new #[Layout('layouts.admin')] class extends Component
 <div>
     @slot('header') User Management @endslot
 
-    <!-- Toolbar -->
-    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-6">
-        <div class="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
-            <div class="relative w-full sm:w-64">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input wire:model.live.debounce.300ms="search" type="text"
-                    placeholder="Search users…"
-                    class="pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] w-full transition-all">
-            </div>
-            
-            <!-- Company Filter Dropdown -->
-            <select wire:model.live="filterCompany"
-                class="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                <option value="">All Companies</option>
-                @foreach($companies as $company)
-                    <option value="{{ $company->id }}">{{ $company->name }}</option>
-                @endforeach
-            </select>
-
-            <!-- Group Filter Dropdown -->
-            <select wire:model.live="filterGroup"
-                class="px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                <option value="">All Access Groups</option>
-                @foreach($allFilterGroups as $group)
-                    <option value="{{ $group->id }}">{{ $group->name }} {{ $group->company ? '('.$group->company->name.')' : '' }}</option>
-                @endforeach
-            </select>
+    <!-- Top Action Row (Add New User Button placed ABOVE filter bar) -->
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="text-lg font-bold text-[#0f172a]">User Accounts</h2>
+            <p class="text-xs text-slate-500">Manage user logins, company assignments, and access group permissions.</p>
         </div>
-
         <button wire:click="openCreate"
-           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-sm font-semibold transition-colors shadow-sm shadow-[#c3122e]/20 w-full sm:w-auto justify-center">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-sm font-semibold whitespace-nowrap shrink-0 transition-all shadow-sm shadow-[#c3122e]/20">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Add New User
+            <span>+ Add New User</span>
         </button>
+    </div>
+
+    <!-- Filter Bar (Search & Filter dropdowns below in separate row) -->
+    <div class="flex flex-wrap items-center gap-3 mb-6 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="relative flex-1 min-w-[220px]">
+            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input wire:model.live.debounce.300ms="search" type="text"
+                placeholder="Search users by name or email..."
+                class="pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] w-full transition-all">
+        </div>
+        
+        <!-- Company Filter Dropdown -->
+        <select wire:model.live="filterCompany"
+            class="px-3.5 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
+            <option value="">All Companies</option>
+            @foreach($companies as $company)
+                <option value="{{ $company->id }}">{{ $company->name }}</option>
+            @endforeach
+        </select>
+
+        <!-- Group Filter Dropdown -->
+        <select wire:model.live="filterGroup"
+            class="px-3.5 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
+            <option value="">All Access Groups</option>
+            @foreach($allFilterGroups as $group)
+                <option value="{{ $group->id }}">{{ $group->name }} {{ $group->company ? '('.$group->company->name.')' : '' }}</option>
+            @endforeach
+        </select>
     </div>
 
     @if(session('success'))
@@ -661,3 +666,5 @@ new #[Layout('layouts.admin')] class extends Component
         </div>
     @endif
 </div>
+
+

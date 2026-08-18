@@ -14,10 +14,19 @@ class LongTermLoanController extends Controller
     /**
      * Show Long Term Loans page with active entries and revision history.
      */
-    public function index(): View
+        public function index(): View
     {
         $company = auth()->user()->company;
         $banks   = $company->banks()->where('is_active', true)->get();
+
+        $filterYear = (int) request()->query('year', 2026);
+        $filterMonth = (int) request()->query('month', 4);
+        if ($filterMonth < 1 || $filterMonth > 12) $filterMonth = 4;
+        if ($filterYear < 2020 || $filterYear > 2035) $filterYear = 2026;
+
+        $filterDate = \Carbon\Carbon::createFromDate($filterYear, $filterMonth, 1)->endOfMonth();
+        $filterMonthName = $filterDate->format('F');
+        $filterDateFormatted = $filterDate->format('d F Y');
 
         // Only fetch active top-level/current records, with their histories eager-loaded
         $loans = LongTermLoan::active()
@@ -48,7 +57,7 @@ class LongTermLoanController extends Controller
 
         return view("livewire.tenant.{$company->slug}.long_term_loans", compact(
             'company', 'banks', 'loans', 'loansGrouped', 'totalFacility', 'totalOutstanding',
-            'existingLoanTypes', 'existingTenors'
+            'existingLoanTypes', 'existingTenors', 'filterMonth', 'filterYear', 'filterMonthName', 'filterDateFormatted'
         ));
     }
 

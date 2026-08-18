@@ -36,7 +36,7 @@ new #[Layout('layouts.admin')] class extends Component
     {
         return [
             'companies' => Company::all(),
-            'groups'    => Group::when($this->companyId, fn($q) => $q->where('company_id', $this->companyId))->get(),
+            'groups'    => Group::when($this->companyId, fn($q) => $q->where('company_id', $this->companyId)->orWhere('group_type', 'group'))->orderBy('name')->get(),
         ];
     }
 

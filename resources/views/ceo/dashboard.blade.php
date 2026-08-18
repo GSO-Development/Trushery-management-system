@@ -5,7 +5,7 @@
 --}}
 @extends('layouts.ceo')
 
-@section('header', 'Group CEO Treasury Dashboard')
+@section('header', 'Group Treasury & Executive Dashboard')
 
 @section('content')
 <div class="space-y-8">
@@ -17,7 +17,7 @@
             <p class="text-sm text-slate-500 mt-1">Consolidated capital overview across all {{ $ceoCompanies->count() }} group companies</p>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{{ route('ceo.comparison') }}"
+            <a href="{{ route('group.comparison') }}"
                class="px-4 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs font-bold shadow-md shadow-[#c3122e]/20 transition-all flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 📊 Multi-Company Comparison Tool

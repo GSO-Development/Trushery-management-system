@@ -11,10 +11,19 @@ use Illuminate\View\View;
 
 class WorkingCapitalController extends Controller
 {
-    public function index(): View
+        public function index(): View
     {
         $company = auth()->user()->company;
         $banks   = $company->banks()->where('is_active', true)->get();
+
+        $filterYear = (int) request()->query('year', 2026);
+        $filterMonth = (int) request()->query('month', 4);
+        if ($filterMonth < 1 || $filterMonth > 12) $filterMonth = 4;
+        if ($filterYear < 2020 || $filterYear > 2035) $filterYear = 2026;
+
+        $filterDate = \Carbon\Carbon::createFromDate($filterYear, $filterMonth, 1)->endOfMonth();
+        $filterMonthName = $filterDate->format('F');
+        $filterDateFormatted = $filterDate->format('d F Y');
 
         $loans = WorkingCapitalLoan::active()
             ->with(['bank', 'user'])
@@ -44,7 +53,7 @@ class WorkingCapitalController extends Controller
 
         return view("livewire.tenant.{$company->slug}.working_capital", compact(
             'company', 'banks', 'loans', 'loansGrouped', 'totalFacility', 'totalOutstanding',
-            'existingFacilityTypes', 'existingTenors'
+            'existingFacilityTypes', 'existingTenors', 'filterMonth', 'filterYear', 'filterMonthName', 'filterDateFormatted'
         ));
     }
 

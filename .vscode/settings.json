@@ -1,8 +1,6 @@
 {
-    "phpcs.enable": false,
-    "phpcs.executablePath": "d:/new_GS/gs_long_report/vendor/bin/phpcs.bat",
-    "phpmd.enable": false,
+    "phpcs.enable": true,
     "php-cs-fixer.enable": false,
-    "php-cs-fixer.onsave": false,
-    "php-resolver.enable": false
+    "phpcs.ignoreIssuesOnSave": true,
+    "phpcs.executablePath": "${workspaceFolder}/vendor/bin/phpcs.bat"
 }

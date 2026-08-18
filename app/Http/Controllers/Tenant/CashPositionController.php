@@ -16,14 +16,14 @@ use Illuminate\View\View;
 
 /**
  * CashPositionController
- * ─────────────────────────────────────────────────────────────────────────────
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * Handles the Cash Position module (4 tabbed sections & bank account management).
  *
  * Routes (in routes/tenant.php):
- *   GET  /{company_slug}/cash-position              → index()
- *   POST /{company_slug}/cash-position/entry        → storeEntry()
- *   POST /{company_slug}/cash-position/movement     → storeMovement()
- *   POST /{company_slug}/cash-position/bank-account → storeBankAccount()
+ *   GET  /{company_slug}/cash-position              â†’ index()
+ *   POST /{company_slug}/cash-position/entry        â†’ storeEntry()
+ *   POST /{company_slug}/cash-position/movement     â†’ storeMovement()
+ *   POST /{company_slug}/cash-position/bank-account â†’ storeBankAccount()
  */
 class CashPositionController extends Controller
 {
@@ -76,6 +76,27 @@ class CashPositionController extends Controller
         $availableWC    = $wcFacilities->sum(fn($l) => max(0, $l->facility_amount - $l->outstanding_amount));
         $totalLiquidity = $availableCash + $availableWC;
 
+        // $banks is an alias for $allBanks (used in blade as $banks)
+        $banks = $allBanks;
+
+        // Extra summary variables required by blade
+        $totalInflows      = $latestEntries->sum('cash_in');
+        $totalOutflows     = $latestEntries->sum('cash_out');
+        $totalClosing      = $latestEntries->sum('closing_balance');
+        $totalAvailable    = $latestEntries->sum(fn($e) => max(0, $e->closing_balance - $e->restricted_cash));
+        $totalRestricted   = $latestEntries->sum('restricted_cash');
+
+        // USD closing balance — sum entries with USD currency, others converted at a fixed rate
+        $usdExchangeRate   = 330.0;   // LKR per USD fallback rate; replace with live rate as needed
+        $totalUsdClosing   = $latestEntries->sum(function ($e) use ($usdExchangeRate) {
+            if ($e->currency === 'USD') {
+                return (float) $e->closing_balance;
+            }
+            return round((float) $e->closing_balance / $usdExchangeRate, 2);
+        });
+
+        $selectedDate = request('date', now()->toDateString());
+
         return view("livewire.tenant.{$company->slug}.cash_position", compact(
             'company',
             'allBanks',
@@ -92,7 +113,16 @@ class CashPositionController extends Controller
             'totalLiquidity',
             'totalOpening',
             'totalCashIn',
-            'totalCashOut'
+            'totalCashOut',
+            'selectedDate',
+            'totalInflows',
+            'totalOutflows',
+            'totalClosing',
+            'totalAvailable',
+            'totalRestricted',
+            'totalUsdClosing',
+            'usdExchangeRate',
+            'banks'
         ));
     }
 
@@ -276,5 +306,20 @@ class CashPositionController extends Controller
         return redirect()
             ->route('tenant.cash-position', ['company_slug' => $company_slug])
             ->with('success', 'Cash movement breakdown updated successfully.');
+    }
+
+    public function destroyEntry(Request $request, string $company_slug, CashPositionEntry $entry): RedirectResponse
+    {
+        $company = auth()->user()->company;
+        if ($entry->company_id !== $company->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        AuditLog::log($company->id, 'DELETE', 'Cash Position Entry', "Deleted cash position entry for account ID {$entry->company_bank_account_id} on date " . ($entry->entry_date ? $entry->entry_date->format('Y-m-d') : 'unknown'));
+        $entry->delete();
+
+        return redirect()
+            ->route('tenant.cash-position', ['company_slug' => $company_slug])
+            ->with('success', 'Cash position record deleted successfully.');
     }
 }

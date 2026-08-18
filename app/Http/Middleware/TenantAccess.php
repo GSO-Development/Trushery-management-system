@@ -2,23 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Company;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * TenantAccess Middleware
- * ─────────────────────────────────────────────────────────────────────────────
- * Guards all tenant (sub-company) portal routes.
- * Runs checks in order:
- *   1. User is authenticated
- *   2. User is NOT an admin (admins use /admin portal)
- *   3. CEO users are redirected to /ceo/dashboard
- *   4. User belongs to the company in {company_slug}
- *   5. User has a group assigned
- *   6. User's group has at least one nav permission
- *   7. User's group has permission for this specific page
- */
 class TenantAccess
 {
     public function handle(Request $request, Closure $next): Response
@@ -30,23 +18,28 @@ class TenantAccess
             return redirect()->route('login');
         }
 
-        // 2. Admins use /admin — not tenant routes
-        if ($user->is_admin) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        // 3. CEO users have their own dashboard
-        if ($user->is_ceo) {
-            return redirect()->route('ceo.dashboard');
-        }
-
-        // 4. Verify company slug matches user's assigned company
         $companySlug = $request->route('company_slug');
-
         if (! $companySlug) {
             abort(403, 'Invalid tenant route: company slug missing.');
         }
 
+        $company = Company::where('slug', $companySlug)->first();
+        if (! $company) {
+            abort(404, 'Sub-Company not found.');
+        }
+
+        // 2. Admins use /admin - redirect them to admin or group portal
+        if ($user->is_admin) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // 3. CEO or Group-level multi-company users:
+        // They must NOT access internal tenant operational forms. Redirect them to the Executive View in /group/company/{slug}
+        if ($user->isCeoOrGroupUser()) {
+            return redirect()->route('group.company.dashboard', $companySlug);
+        }
+
+        // 4. Regular sub-company tenant users: verify assigned company
         if (! $user->company || $user->company->slug !== $companySlug) {
             abort(403, 'Access Forbidden: You do not belong to this company portal.');
         }
@@ -62,10 +55,9 @@ class TenantAccess
             abort(403, 'Access Forbidden: Your group has no assigned permissions.');
         }
 
-        // 7. Check page-level permission from the URL path
-        //    e.g. /health/rate-management → page slug = 'rate-management' → nav key = 'rate_management'
+        // 7. Check page-level permission from the URL path (profile and notifications are universally available)
         $pageSlug = $request->segment(2);
-        if ($pageSlug) {
+        if ($pageSlug && $pageSlug !== 'profile' && $pageSlug !== 'notifications') {
             $navKey = str_replace('-', '_', $pageSlug);
             if (! $user->group->hasNavPermission($navKey)) {
                 abort(403, 'Access Forbidden: Your group does not have permission to view this page.');

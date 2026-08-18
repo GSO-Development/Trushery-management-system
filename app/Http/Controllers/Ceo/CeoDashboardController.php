@@ -22,9 +22,11 @@ class CeoDashboardController extends Controller
         $user = $request->user();
 
         if ($user->is_admin) {
-            $ceoCompanies = Company::where('slug', '!=', 'admin')->with('banks')->get();
+            $ceoCompanies = Company::where('slug', '!=', 'admin')->with('banks')->orderBy('name')->get();
+        } elseif ($user->group && $user->group->isGroup() && ! empty($user->group->company_ids)) {
+            $ceoCompanies = Company::whereIn('id', $user->group->company_ids)->with('banks')->orderBy('name')->get();
         } else {
-            $ceoCompanies = $user->ceoCompanies()->with('banks')->get();
+            $ceoCompanies = $user->ceoCompanies()->with('banks')->orderBy('name')->get();
             if ($ceoCompanies->isEmpty()) {
                 $ceoCompanies = Company::where('slug', '!=', 'admin')->with('banks')->get();
             }
@@ -146,6 +148,111 @@ class CeoDashboardController extends Controller
             'allLongTermLoans',
             'allWorkingCapital',
             'allFixedDeposits'
+        ));
+    }
+
+    /**
+     * Display executive read-only treasury dashboard for a specific sub-company.
+     */
+    public function subcompanyDashboard(Request $request, string $company_slug): View
+    {
+        $user = $request->user();
+
+        // 1. Get accessible companies for this user
+        if ($user->is_admin) {
+            $accessibleCompanies = Company::where('slug', '!=', 'admin')->with('banks')->orderBy('name')->get();
+        } elseif ($user->group && $user->group->isGroup() && ! empty($user->group->company_ids)) {
+            $accessibleCompanies = Company::whereIn('id', $user->group->company_ids)->with('banks')->orderBy('name')->get();
+        } else {
+            $accessibleCompanies = $user->ceoCompanies()->with('banks')->orderBy('name')->get();
+            if ($accessibleCompanies->isEmpty()) {
+                $accessibleCompanies = Company::where('slug', '!=', 'admin')->with('banks')->get();
+            }
+        }
+
+        $accessibleIds = $accessibleCompanies->pluck('id')->toArray();
+
+        // 2. Find the requested company
+        $company = Company::where('slug', $company_slug)->with('banks')->firstOrFail();
+
+        // 3. Security Check: ensure company belongs to user's assigned group
+        if (! in_array($company->id, $accessibleIds)) {
+            abort(403, 'Access Forbidden: This sub-company is not assigned to your Group.');
+        }
+
+        // 4. Fetch Sub-Company Data
+        // A. Long Term Loans
+        $ltlLoans       = LongTermLoan::active()->where('company_id', $company->id)->with('bank')->latest('entry_date')->get();
+        $ltlOutstanding = (float) $ltlLoans->sum('outstanding_amount');
+        $ltlFacilities  = (float) $ltlLoans->sum('facility_amount');
+        $ltlCount       = $ltlLoans->count();
+        $avgLtlRate     = $ltlLoans->count() > 0 ? (float) $ltlLoans->avg('interest_rate') : 0;
+
+        // B. Working Capital Loans
+        $wcLoans        = WorkingCapitalLoan::active()->where('company_id', $company->id)->with('bank')->latest('entry_date')->get();
+        $wcOutstanding  = (float) $wcLoans->sum('outstanding_amount');
+        $wcFacilities   = (float) $wcLoans->sum('facility_amount');
+        $wcCount        = $wcLoans->count();
+        $avgWcRate      = $wcLoans->count() > 0 ? (float) $wcLoans->avg('interest_rate') : 0;
+
+        // C. Fixed Deposits
+        $fdList             = FixedDeposit::active()->where('company_id', $company->id)->with('bank')->latest('commencement_date')->get();
+        $fixedDepositsTotal = (float) $fdList->sum('amount');
+        $fdCount            = $fdList->count();
+        $avgFdRate          = $fdList->count() > 0 ? (float) $fdList->avg('interest_rate') : 0;
+        $fdMonthlyProfit    = (float) $fdList->sum(fn($fd) => ($fd->amount * ($fd->interest_rate / 100)) / 12);
+        $pledgedFdAmount    = (float) $fdList->filter(fn($fd) => !empty($fd->pledged_details))->sum('amount');
+
+        // D. Bank Accounts & Cash Position
+        $bankAccounts = CompanyBankAccount::with('bank')->where('company_id', $company->id)->get();
+        $latestCashEntries = CashPositionEntry::where('company_id', $company->id)
+            ->latest('entry_date')
+            ->latest('id')
+            ->get()
+            ->keyBy('company_bank_account_id');
+
+        $totalClosingCash    = (float) $latestCashEntries->sum('closing_balance');
+        $totalRestrictedCash = (float) $latestCashEntries->sum('restricted_cash');
+        $availableCash       = max(0, $totalClosingCash - $totalRestrictedCash);
+
+        // Overall Totals
+        $totalDebtOutstanding  = $ltlOutstanding + $wcOutstanding;
+        $totalCreditFacilities = $ltlFacilities + $wcFacilities;
+        $totalLiquidAssets     = $availableCash + $fixedDepositsTotal;
+        $netDebtPosition       = max(0, $totalDebtOutstanding - $totalLiquidAssets);
+
+        $allCompanyLoans = $ltlLoans->concat($wcLoans);
+        $avgLoanRate = $allCompanyLoans->count() > 0 ? (float) $allCompanyLoans->avg('interest_rate') : 0;
+
+        return view('ceo.subcompany_dashboard', compact(
+            'company',
+            'accessibleCompanies',
+            'ltlLoans',
+            'ltlOutstanding',
+            'ltlFacilities',
+            'ltlCount',
+            'avgLtlRate',
+            'wcLoans',
+            'wcOutstanding',
+            'wcFacilities',
+            'wcCount',
+            'avgWcRate',
+            'fdList',
+            'fixedDepositsTotal',
+            'fdCount',
+            'avgFdRate',
+            'fdMonthlyProfit',
+            'pledgedFdAmount',
+            'bankAccounts',
+            'latestCashEntries',
+            'totalClosingCash',
+            'totalRestrictedCash',
+            'availableCash',
+            'totalDebtOutstanding',
+            'totalCreditFacilities',
+            'totalLiquidAssets',
+            'netDebtPosition',
+            'avgLoanRate'
         ));
     }
 }

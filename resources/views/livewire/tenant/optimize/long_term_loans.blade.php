@@ -1,5 +1,5 @@
 {{--
-    resources/views/livewire/tenant/health/long_term_loans.blade.php
+    resources/views/livewire/tenant/[slug]/long_term_loans.blade.php
     Controller: App\Http\Controllers\Tenant\LongTermLoanController
 --}}
 @extends('layouts.portal')
@@ -13,7 +13,7 @@
         <div>
             <h1 class="text-2xl font-extrabold text-[#0f172a] tracking-tight">Long Term Loan Portfolio</h1>
             <p class="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                <span>🏢 {{ $company->name }}</span>
+                <span>{{ $company->name }}</span>
                 <span>•</span>
                 <span>Term loan facilities, interest rates &amp; settlement history</span>
             </p>
@@ -49,13 +49,13 @@
         </div>
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Granted Facility</p>
-            <p class="text-2xl font-bold text-slate-800">LKR {{ number_format($totalFacility, 0) }}</p>
-            <p class="text-xs text-slate-400 mt-1">Combined sanction limit</p>
+            <p class="text-2xl font-bold text-[#0f172a]">LKR {{ number_format($totalFacility, 0) }}</p>
+            <p class="text-xs text-slate-400 mt-1">Original approved sum</p>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 bg-gradient-to-br from-red-50/50 to-amber-50/30">
-            <p class="text-xs font-semibold text-[#c3122e] uppercase tracking-wider mb-1">Total Outstanding Principal</p>
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <p class="text-xs font-semibold text-[#c3122e] uppercase tracking-wider mb-1">Total Outstanding</p>
             <p class="text-2xl font-bold text-[#c3122e]">LKR {{ number_format($totalOutstanding, 0) }}</p>
-            <p class="text-xs text-slate-500 mt-1">Active capital debt obligation</p>
+            <p class="text-xs text-slate-400 mt-1">Current principal balance</p>
         </div>
     </div>
 
@@ -66,14 +66,32 @@
 
     {{-- Main Portfolio Table --}}
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div class="px-6 py-4 border-b border-slate-100 bg-[#f8fafc] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="px-6 py-4 border-b border-slate-100 bg-[#f8fafc] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <h2 class="font-bold text-[#0f172a] text-base">Long Term Loan Portfolio</h2>
-                <p class="text-xs text-slate-400">Click 📜 History to view rate revisions, settlements &amp; archived audit trails</p>
+                <p class="text-xs text-slate-400">Click History to view rate revisions, settlements &amp; archived audit trails</p>
             </div>
-            <span class="text-xs font-semibold text-[#c3122e] bg-[#fdf2f4] px-3 py-1 rounded-full border border-[#f8d7da]">
-                {{ $loans->count() }} Active Loans
-            </span>
+
+            {{-- Month & Year View Filter --}}
+            <div class="flex items-center gap-3">
+                <form method="GET" action="{{ route('tenant.long-term-loans', ['company_slug' => $company->slug]) }}" class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase">Period:</label>
+                    <select name="month" class="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#c3122e]">
+                        @foreach(range(1, 12) as $m)
+                            <option value="{{ $m }}" {{ ($filterMonth ?? 4) == $m ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
+                        @endforeach
+                    </select>
+                    <select name="year" class="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#c3122e]">
+                        @foreach(range(2024, 2030) as $y)
+                            <option value="{{ $y }}" {{ ($filterYear ?? 2026) == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-colors">Apply</button>
+                </form>
+                <span class="text-xs font-semibold text-[#c3122e] bg-[#fdf2f4] px-3 py-1 rounded-full border border-[#f8d7da]">
+                    {{ $loans->count() }} Active Loans
+                </span>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -84,9 +102,12 @@
                         <th class="px-3 py-3 text-left">Loan Type</th>
                         <th class="px-3 py-3 text-left font-mono">Tenor</th>
                         <th class="px-3 py-3 text-right">Facility (LKR)</th>
+                        <th class="px-3 py-3 text-center">Granted / Restructured</th>
                         <th class="px-3 py-3 text-right text-[#c3122e]">Interest Rate</th>
                         <th class="px-3 py-3 text-left">Rem. Tenor</th>
-                        <th class="px-3 py-3 text-right font-extrabold text-[#0f172a]">Outstanding (LKR)</th>
+                        <th class="px-3 py-3 text-right font-extrabold text-[#0f172a]">
+                            Outstanding as at {{ $filterDateFormatted ?? (($filterMonthName ?? 'April') . ' ' . ($filterYear ?? '2026')) }}
+                        </th>
                         <th class="px-3 py-3 text-center">Curr</th>
                         <th class="px-3 py-3 text-center">Revision History</th>
                         <th class="px-3 py-3 text-center">Actions</th>
@@ -112,12 +133,15 @@
                             </td>
                             <td class="px-3 py-3 font-mono font-bold text-slate-700">{{ $loan->formatted_tenor }}</td>
                             <td class="px-3 py-3 text-right font-mono text-slate-700">{{ number_format($loan->facility_amount, 0) }}</td>
+                            <td class="px-3 py-3 text-center font-mono text-slate-600">
+                                {{ $loan->granted_date ? $loan->granted_date->format('d/m/Y') : '—' }}
+                            </td>
                             <td class="px-3 py-3 text-right font-bold text-[#c3122e] text-sm">{{ number_format($loan->interest_rate, 3) }}%</td>
                             <td class="px-3 py-3 text-slate-600">
                                 @if($isSettled)
                                     <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">Settled</span>
                                 @elseif($isDueSoon)
-                                    <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">≤ 1 Month</span>
+                                    <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">⚠️ 1 Month</span>
                                 @else
                                     {{ $loan->remaining_tenor_months ? $loan->remaining_tenor_months.' Mos' : '—' }}
                                 @endif
@@ -143,88 +167,22 @@
                                 @endif
                             </td>
                             <td class="px-3 py-3 text-center flex items-center justify-center gap-1.5">
-                                {{-- Icon Only Edit / Revise Button --}}
                                 <button type="button" @click="revisingId = {{ $loan->id }}"
                                     class="p-1.5 rounded-lg bg-[#fdf2f4] hover:bg-[#c3122e] text-[#c3122e] hover:text-white transition-colors border border-[#f8d7da] cursor-pointer"
                                     title="Revise Rate &amp; Settle Loan">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 </button>
-                                <form method="POST" action="{{ route('tenant.long-term-loans.destroy', ['company_slug' => $company->slug, 'loan' => $loan->id]) }}" onsubmit="return confirm('Delete this loan entry?')">
+                                <form method="POST" action="{{ route('tenant.long-term-loans.destroy', ['company_slug' => $company->slug, 'loan' => $loan->id]) }}" onsubmit="return confirm('Delete this loan permanently?')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete Loan"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                                    <button type="submit" class="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer" title="Delete Loan">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
                                 </form>
                             </td>
                         </tr>
-
-                        {{-- History Drawer Sub-Row --}}
-                        @if($loan->history_records->count() > 0)
-                        <tr x-show="openHistoryId === {{ $loan->id }}" x-cloak class="bg-slate-100/90 border-y border-slate-300">
-                            <td colspan="10" class="p-4">
-                                <div class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center justify-between border-b border-slate-300 pb-2">
-                                    <span>📜 Complete Version &amp; Rate Revision History for {{ $loan->loan_type }} (Current: Version {{ $loan->version }})</span>
-                                    <span class="text-[10px] text-slate-500 font-normal">{{ $loan->history_records->count() }} archived revisions</span>
-                                </div>
-                                <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
-                                    @foreach($loan->history_records as $hist)
-                                        <div class="bg-white rounded-xl p-3 border border-slate-200 shadow-sm text-xs space-y-2">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="px-2 py-0.5 rounded bg-slate-900 text-white font-mono text-[10px] font-bold">Version {{ $hist->version }}</span>
-                                                    <span class="text-slate-500 text-[11px]">Updated by: <strong>{{ $hist->user->name ?? 'System' }}</strong></span>
-                                                    <span class="text-slate-400 text-[11px]">({{ $hist->created_at->format('d M Y H:i:s') }})</span>
-                                                </div>
-                                                @if($hist->action_type === 'settle_loan')
-                                                    <div class="flex items-center gap-1.5">
-                                                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                                                            Settle Loan ({{ strtoupper($hist->settlement_type ?? 'ALL') }}: LKR {{ number_format($hist->settled_amount ?? $hist->outstanding_amount, 2) }})
-                                                        </span>
-                                                        @if($hist->settledViaLoan)
-                                                            <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">
-                                                                🔄 Settled via: {{ $hist->settledViaLoan->bank->name ?? 'Bank' }} - {{ $hist->settledViaLoan->loan_type }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            @if($hist->revision_notes)
-                                                <div class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[11px] flex items-center gap-1">
-                                                    📝 Revision / Settlement Notes: "{{ $hist->revision_notes }}"
-                                                </div>
-                                            @endif
-
-                                            {{-- Snapshot Attributes Grid --}}
-                                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 font-mono text-[11px]">
-                                                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <span class="text-[10px] font-sans text-slate-400 block uppercase font-semibold">Interest Rate</span>
-                                                    <span class="font-bold text-[#c3122e] text-xs">{{ number_format($hist->interest_rate, 3) }}%</span>
-                                                </div>
-                                                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <span class="text-[10px] font-sans text-slate-400 block uppercase font-semibold">Outstanding Debt</span>
-                                                    <span class="font-bold text-slate-800 text-xs">LKR {{ number_format($hist->outstanding_amount, 0) }}</span>
-                                                </div>
-                                                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <span class="text-[10px] font-sans text-slate-400 block uppercase font-semibold">Facility Limit</span>
-                                                    <span class="font-semibold text-slate-700">LKR {{ number_format($hist->facility_amount, 0) }}</span>
-                                                </div>
-                                                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <span class="text-[10px] font-sans text-slate-400 block uppercase font-semibold">Loan Tenor</span>
-                                                    <span class="font-semibold text-slate-700">{{ $hist->formatted_tenor }}</span>
-                                                </div>
-                                                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <span class="text-[10px] font-sans text-slate-400 block uppercase font-semibold">Rem. Tenor</span>
-                                                    <span class="font-semibold text-slate-700">{{ $hist->remaining_tenor_months ? $hist->remaining_tenor_months.' Months' : '—' }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </td>
-                        </tr>
-                        @endif
-
                     @empty
                         <tr x-show="!addingRow">
-                            <td colspan="10" class="px-6 py-10 text-center text-slate-300 text-xs">No Long Term Loans recorded yet. Click <strong class="text-[#c3122e]">+ Add Loan Facility</strong> to create one.</td>
+                            <td colspan="11" class="px-6 py-10 text-center text-slate-300 text-xs">No Long Term Loans recorded yet. Click <strong class="text-[#c3122e]">+ Add Loan Facility</strong> to create one.</td>
                         </tr>
                     @endforelse
 
@@ -239,14 +197,26 @@
                         <td class="px-2 py-2"><input type="text" name="loan_type" form="ltl-new-row" required list="ltl-types-options" placeholder="Type…" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs"></td>
                         <td class="px-2 py-2"><input type="number" min="1" name="tenor" form="ltl-new-row" required placeholder="Months (e.g. 27)" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-mono text-center"></td>
                         <td class="px-2 py-2"><input type="number" name="facility_amount" form="ltl-new-row" required step="1000" min="0" placeholder="0" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-mono text-right"></td>
+                        <td class="px-2 py-2"><input type="date" name="granted_date" form="ltl-new-row" value="{{ date('Y-m-d') }}" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs"></td>
                         <td class="px-2 py-2"><input type="number" name="interest_rate" form="ltl-new-row" required step="0.001" min="0" max="100" placeholder="0.000" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-mono text-right"></td>
                         <td class="px-2 py-2"><input type="number" name="remaining_tenor_months" form="ltl-new-row" placeholder="Months" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs text-center"></td>
                         <td class="px-2 py-2"><input type="number" name="outstanding_amount" form="ltl-new-row" required step="1000" min="0" placeholder="0" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-mono text-right"></td>
                         <td class="px-2 py-2">
                             <select name="currency" form="ltl-new-row" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"><option value="LKR">LKR</option><option value="USD">USD</option></select>
                         </td>
-                        <td colspan="2" class="px-2 py-2">
-                            <input type="date" name="entry_date" form="ltl-new-row" required value="{{ date('Y-m-d') }}" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs">
+                        <td class="px-2 py-2 text-center text-slate-400">
+                            <input type="hidden" name="entry_date" form="ltl-new-row" value="{{ date('Y-m-d') }}">
+                            <span class="text-[10px]">New</span>
+                        </td>
+                        <td class="px-2 py-2 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <button type="submit" form="ltl-new-row" class="px-2.5 py-1 rounded-lg bg-[#c3122e] hover:bg-[#9e0e24] text-white text-[11px] font-bold shadow-sm cursor-pointer">
+                                    Save
+                                </button>
+                                <button type="button" @click="addingRow = false" class="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer" title="Cancel / Remove Row">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -295,67 +265,82 @@
                     @csrf
                     <input type="hidden" name="action_type" :value="mode">
 
-                    <!-- Mode 1: Change Rate Fields -->
-                    <div x-show="mode === 'rate_change'" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5">New Interest Rate (%) <span class="text-red-500">*</span></label>
-                            <input type="number" step="0.001" name="interest_rate" value="{{ $loan->interest_rate }}" :required="mode === 'rate_change'" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5">New Outstanding Amount <span class="text-red-500">*</span></label>
-                            <input type="number" step="0.01" name="outstanding_amount" value="{{ $loan->outstanding_amount }}" :required="mode === 'rate_change'" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                        </div>
-                    </div>
-
-                    <!-- Mode 2: Settle Loan Fields -->
-                    <div x-show="mode === 'settle_loan'" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5">Settlement Option <span class="text-red-500">*</span></label>
-                            <select name="settlement_type" x-model="settlementType" :required="mode === 'settle_loan'" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-medium focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                                <option value="all">All (Full Settlement - LKR {{ number_format($loan->outstanding_amount, 2) }})</option>
-                                <option value="partial">Partially (Partial Settlement)</option>
-                            </select>
-                        </div>
-
-                        <!-- Amount for Partial Settlement -->
-                        <div x-show="settlementType === 'partial'">
-                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5">Settlement Amount (LKR) <span class="text-red-500">*</span></label>
-                            <input type="number" step="0.01" min="0.01" max="{{ $loan->outstanding_amount }}" name="settled_amount" placeholder="Enter partial amount..." :required="mode === 'settle_loan' && settlementType === 'partial'" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono text-emerald-600 font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-                        </div>
-
-                        <!-- Settle Using New Loan Toggle / Checkbox -->
-                        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                            <label class="flex items-center gap-2.5 cursor-pointer">
-                                <input type="checkbox" name="settle_using_new_loan" value="1" x-model="settleUsingNewLoan" class="rounded text-[#c3122e] focus:ring-[#c3122e] w-4 h-4">
-                                <span class="text-xs font-bold text-slate-800">🔄 Settled Using New Loan / Facility</span>
-                            </label>
-
-                            <!-- Select Other Available Loan Dropdown -->
-                            <div x-show="settleUsingNewLoan" class="pt-2 border-t border-slate-200">
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Select Replacement / New Loan Facility</label>
-                                <select name="settled_via_loan_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white font-medium">
-                                    <option value="">— Select Replacement Loan —</option>
-                                    @foreach($loans->where('id', '!=', $loan->id) as $otherLoan)
-                                        <option value="{{ $otherLoan->id }}">{{ $otherLoan->bank->name ?? 'Bank' }} - {{ $otherLoan->loan_type }} (LKR {{ number_format($otherLoan->facility_amount) }})</option>
-                                    @endforeach
-                                </select>
+                    <!-- Tab 1: Change Rate Mode -->
+                    <div x-show="mode === 'rate_change'" class="space-y-3.5">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Old Rate</label>
+                                <div class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-400">
+                                    {{ number_format($loan->interest_rate, 3) }}%
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-[#c3122e] uppercase tracking-wider mb-1">New Rate (%) *</label>
+                                <input type="number" step="0.001" min="0" max="100" name="new_interest_rate" value="{{ $loan->interest_rate }}"
+                                    class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
                             </div>
                         </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Remaining Tenor (Months)</label>
+                            <input type="number" min="0" name="remaining_tenor_months" value="{{ $loan->remaining_tenor_months }}"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Outstanding Balance (LKR)</label>
+                            <input type="number" step="1000" min="0" name="outstanding_amount" value="{{ $loan->outstanding_amount }}"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
+                        </div>
                     </div>
 
-                    <!-- Mandatory Revision / Settlement Notes (Both Sides) -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5">
-                            Revision / Settlement Notes <span class="text-red-500">*</span>
-                        </label>
-                        <textarea name="revision_notes" rows="2" required placeholder="Mandatory notes describing rate change or settlement details..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]"></textarea>
+                    <!-- Tab 2: Settle Loan Mode -->
+                    <div x-show="mode === 'settle_loan'" class="space-y-3.5">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Settlement Scope</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-colors"
+                                       :class="settlementType === 'all' ? 'border-[#c3122e] bg-[#fdf2f4] text-[#c3122e] font-bold' : 'border-slate-200 text-slate-600'">
+                                    <input type="radio" name="settlement_type" value="all" x-model="settlementType" class="hidden">
+                                    <span>Full Settle (100%)</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-colors"
+                                       :class="settlementType === 'partial' ? 'border-[#c3122e] bg-[#fdf2f4] text-[#c3122e] font-bold' : 'border-slate-200 text-slate-600'">
+                                    <input type="radio" name="settlement_type" value="partial" x-model="settlementType" class="hidden">
+                                    <span>Partial Payment</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div x-show="settlementType === 'partial'">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Settled Amount (LKR) *</label>
+                            <input type="number" step="1000" min="1" max="{{ $loan->outstanding_amount }}" name="settled_amount"
+                                placeholder="Amount settled..."
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
+                        </div>
                     </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
-                        <button type="button" @click.prevent="revisingId = null" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors">Cancel</button>
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5">
-                            <span x-text="mode === 'rate_change' ? 'Save Rate Revision' : 'Confirm Settlement'"></span>
+                    <!-- Common Reason & Effective Date -->
+                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Effective Date *</label>
+                            <input type="date" name="effective_date" required value="{{ date('Y-m-d') }}"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Reason / Notes</label>
+                            <input type="text" name="revision_notes" placeholder="e.g. Bank rate review"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Footer Buttons -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                        <button type="button" @click="revisingId = null" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs font-bold transition-colors shadow-sm shadow-[#c3122e]/20">
+                            Apply Changes
                         </button>
                     </div>
                 </form>

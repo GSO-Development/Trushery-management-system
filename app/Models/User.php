@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,6 +60,35 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user has CEO or Group-level multi-company access.
+     */
+    public function isCeoOrGroupUser(): bool
+    {
+        return $this->is_ceo || ($this->group && $this->group->isGroup());
+    }
+
+    /**
+     * Dynamically resolve the active company.
+     * If user has no single company_id (e.g. Group/CEO), resolve from route slug if available.
+     */
+    public function getCompanyAttribute()
+    {
+        if ($this->company_id && $this->relationLoaded('company') && $this->getRelation('company')) {
+            return $this->getRelation('company');
+        }
+
+        if ($this->company_id) {
+            return $this->getRelationValue('company');
+        }
+
+        if (request() && request()->route('company_slug')) {
+            return Company::where('slug', request()->route('company_slug'))->first();
+        }
+
+        return null;
+    }
+
+    /**
      * Determine the redirect route after login based on role.
      */
     public function getPostLoginRedirect(): string
@@ -69,9 +97,9 @@ class User extends Authenticatable
             return route('admin.dashboard');
         }
 
-        // CEO: redirect to CEO multi-company dashboard
-        if ($this->is_ceo) {
-            return route('ceo.dashboard');
+        // CEO or Group-type Access Group: redirect to Group multi-company dashboard
+        if ($this->is_ceo || ($this->group && $this->group->isGroup())) {
+            return route('group.dashboard');
         }
 
         if ($this->company && $this->group) {
@@ -79,8 +107,14 @@ class User extends Authenticatable
             $navKeys     = $this->group->getNavKeys();
 
             if (! empty($navKeys)) {
-                $firstKey  = $navKeys[0];
-                $pageSlug  = str_replace('_', '-', $firstKey);
+                // Always prefer summary_dashboard as the landing page if the group has access to it
+                if (in_array('summary_dashboard', $navKeys, true)) {
+                    return url("/{$companySlug}/summary-dashboard");
+                }
+
+                // Fallback to first nav key
+                $firstKey = $navKeys[0];
+                $pageSlug = str_replace('_', '-', $firstKey);
 
                 return url("/{$companySlug}/{$pageSlug}");
             }
@@ -89,4 +123,3 @@ class User extends Authenticatable
         return route('login');
     }
 }
-

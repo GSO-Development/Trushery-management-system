@@ -18,9 +18,12 @@ class TenantController extends Controller
      * Display the comprehensive executive summary dashboard for the Head of Finance.
      * Integrates LTL, Working Capital, Fixed Deposits, and Cash Position analytics with interactive charts.
      */
-    public function summaryDashboard(): View
+    public function summaryDashboard(Request $request): View
     {
-        $company = auth()->user()->company;
+        $companySlug = $request->route('company_slug');
+        $company = $companySlug
+            ? \App\Models\Company::where('slug', $companySlug)->firstOrFail()
+            : auth()->user()->company;
 
         // 1. Long Term Loans
         $ltlLoans       = LongTermLoan::active()->where('company_id', $company->id)->with('bank')->get();
@@ -88,6 +91,9 @@ class TenantController extends Controller
             ->take(6)
             ->get();
 
+        // totalCash = alias for totalLiquidAssets (used in blade)
+        $totalCash = $totalLiquidAssets;
+
         return view("livewire.tenant.{$company->slug}.summary_dashboard", compact(
             'company',
             'ltlLoans',
@@ -114,6 +120,7 @@ class TenantController extends Controller
             'totalCreditFacilities',
             'totalLiquidAssets',
             'netDebtPosition',
+            'totalCash',
             'avgLoanRate',
             'availableCash',
             'totalClosingCash',
