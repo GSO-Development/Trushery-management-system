@@ -145,9 +145,10 @@
     $hasRestricted = ($restr > 0);
 @endphp
 <tr class="transition-colors {{ $isNegativeOrZero ? 'bg-red-50/70 border-l-4 border-l-red-600 hover:bg-red-100/70' : ($hasRestricted ? 'bg-amber-50/40 border-l-4 border-l-amber-400 hover:bg-amber-50/70' : 'hover:bg-slate-50') }}">
-                            <td class="px-4 py-3.5 font-bold text-[#0f172a]">
-                                {{ $acct->bank->name ?? '—' }}
-                                <span class="block text-[10px] font-mono text-slate-400">{{ $acct->bank->bank_code ?? '' }}</span>
+                            <td class="px-4 py-3.5">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 text-white font-black text-xs font-mono tracking-wider shadow-sm">
+                                    {{ $acct->bank->short_name ?: ($acct->bank->bank_code ?: $acct->bank->name) }}
+                                </span>
                             </td>
                             <td class="px-4 py-3.5">
                                 <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[10px]">

@@ -7,8 +7,9 @@ use Livewire\Volt\Component;
 
 new #[Layout('layouts.admin')] class extends Component
 {
-    public string $name     = '';
-    public string $bankCode = '';
+    public string $name      = '';
+    public string $shortName = '';
+    public string $bankCode  = '';
     public bool   $isActive = true;
     public string $search   = '';
 
@@ -50,7 +51,7 @@ new #[Layout('layouts.admin')] class extends Component
 
     public function openCreate(): void
     {
-        $this->reset('name', 'bankCode', 'editingId');
+        $this->reset('name', 'shortName', 'bankCode', 'editingId');
         $this->isActive  = true;
         $this->showModal = true;
     }
@@ -60,6 +61,7 @@ new #[Layout('layouts.admin')] class extends Component
         $bank            = Bank::findOrFail($id);
         $this->editingId = $bank->id;
         $this->name      = $bank->name;
+        $this->shortName = $bank->short_name ?? '';
         $this->bankCode  = $bank->bank_code;
         $this->isActive  = $bank->is_active;
         $this->showModal = true;
@@ -74,15 +76,17 @@ new #[Layout('layouts.admin')] class extends Component
     public function save(): void
     {
         $this->validate([
-            'name'     => 'required|string|max:255',
-            'bankCode' => 'required|string|max:10|unique:banks,bank_code,' . ($this->editingId ?? 'NULL'),
-            'isActive' => 'boolean',
+            'name'      => 'required|string|max:255',
+            'shortName' => 'required|string|max:30',
+            'bankCode'  => 'required|string|max:10|unique:banks,bank_code,' . ($this->editingId ?? 'NULL'),
+            'isActive'  => 'boolean',
         ]);
 
         $data = [
-            'name'      => $this->name,
-            'bank_code' => strtoupper($this->bankCode),
-            'is_active' => $this->isActive,
+            'name'       => $this->name,
+            'short_name' => strtoupper(trim($this->shortName)),
+            'bank_code'  => strtoupper($this->bankCode),
+            'is_active'  => $this->isActive,
         ];
 
         if ($this->editingId) {
@@ -93,7 +97,7 @@ new #[Layout('layouts.admin')] class extends Component
             session()->flash('success', 'Bank created successfully.');
         }
 
-        $this->reset('name', 'bankCode', 'editingId');
+        $this->reset('name', 'shortName', 'bankCode', 'editingId');
         $this->showModal = false;
     }
 
@@ -187,8 +191,9 @@ new #[Layout('layouts.admin')] class extends Component
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-slate-100 bg-[#f8fafc]">
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank Name</th>
-                        <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank Code</th>
+                        <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Bank Name</th>
+                        <th class="px-6 py-3.5 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Short Code</th>
+                        <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Bank Code</th>
                         <th class="px-6 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Registered Accounts</th>
                         <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
@@ -197,8 +202,13 @@ new #[Layout('layouts.admin')] class extends Component
                 <tbody class="divide-y divide-slate-50">
                     @forelse($banks as $bank)
                         <tr class="hover:bg-[#fdf2f4]/30 transition-colors">
-                            <td class="px-6 py-4 font-medium text-[#0f172a]">{{ $bank->name }}</td>
-                            <td class="px-6 py-4 font-mono text-xs font-bold text-[#c3122e]">{{ $bank->bank_code }}</td>
+                            <td class="px-6 py-4 font-bold text-[#0f172a]">{{ $bank->name }}</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-extrabold text-xs font-mono tracking-wider shadow-sm">
+                                    {{ $bank->short_name ?: $bank->bank_code }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 font-mono text-xs font-bold text-slate-700">{{ $bank->bank_code }}</td>
                             <td class="px-6 py-4 text-center">
                                 @if($bank->company_bank_accounts_count > 0)
                                     <div class="relative inline-block text-left group"
@@ -476,17 +486,26 @@ new #[Layout('layouts.admin')] class extends Component
                 <div class="p-6 overflow-y-auto space-y-4 flex-1">
                     <form wire:submit="save" id="bankForm" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bank Name <span class="text-red-500">*</span></label>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bank Full Name <span class="text-red-500">*</span></label>
                             <input wire:model="name" type="text" placeholder="e.g. Commercial Bank of Ceylon" required
                                 class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
                             @error('name') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bank Code <span class="text-red-500">*</span></label>
-                            <input wire:model="bankCode" type="text" placeholder="e.g. 7056" required
-                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] font-mono">
-                            @error('bankCode') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bank Short Code <span class="text-red-500">*</span></label>
+                                <input wire:model="shortName" type="text" placeholder="e.g. COMBANK, HNB, BOC" required
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] font-mono font-bold uppercase">
+                                @error('shortName') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bank Code (Clearing No) <span class="text-red-500">*</span></label>
+                                <input wire:model="bankCode" type="text" placeholder="e.g. 7056" required
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] font-mono">
+                                @error('bankCode') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            </div>
                         </div>
 
                         <div class="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">

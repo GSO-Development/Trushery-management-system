@@ -10,6 +10,7 @@ class Bank extends Model
 {
     protected $fillable = [
         'name',
+        'short_name',
         'bank_code',
         'is_active',
     ];
@@ -17,6 +18,14 @@ class Bank extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Get the bank short code or fallback.
+     */
+    public function getShortCodeDisplayAttribute(): string
+    {
+        return $this->short_name ?: ($this->bank_code ?: $this->name);
+    }
 
     public function companies(): BelongsToMany
     {
