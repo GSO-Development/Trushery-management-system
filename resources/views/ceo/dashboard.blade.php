@@ -102,24 +102,23 @@
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h2 class="text-lg font-bold text-[#0f172a]">My Companies</h2>
-                <p class="text-xs text-slate-400">Click any company card below to drill down into its active portfolio</p>
+                <p class="text-xs text-slate-400">Click any company card to view its detailed executive treasury dashboard</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             @foreach($companySummaries as $summary)
-                <a href="{{ route('ceo.dashboard', ['company_id' => $summary['id']]) }}"
-                   class="block bg-white rounded-2xl border p-5 shadow-sm transition-all duration-200 text-left
-                          {{ $selectedSummary && $selectedSummary['id'] === $summary['id']
-                              ? 'border-[#c3122e] ring-2 ring-[#c3122e]/20 shadow-lg shadow-[#c3122e]/10'
-                              : 'border-slate-200 hover:border-[#c3122e]/40 hover:shadow-md' }}">
+                <a href="{{ route('group.company.dashboard', $summary['slug']) }}"
+                   class="block bg-white rounded-2xl border p-5 shadow-sm transition-all duration-200 text-left group/card
+                          border-slate-200 hover:border-[#c3122e]/50 hover:shadow-lg hover:shadow-[#c3122e]/10 hover:-translate-y-0.5">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-9 h-9 rounded-xl bg-[#fdf2f4] flex items-center justify-center">
+                        <div class="w-9 h-9 rounded-xl bg-[#fdf2f4] flex items-center justify-center flex-shrink-0">
                             <span class="text-[#c3122e] font-bold text-sm">{{ strtoupper(substr($summary['name'], 0, 2)) }}</span>
                         </div>
-                        @if($selectedSummary && $selectedSummary['id'] === $summary['id'])
-                            <span class="px-2 py-0.5 rounded-full bg-[#c3122e] text-white text-[10px] font-bold">Selected</span>
-                        @endif
+                        <span class="flex items-center gap-1 text-[10px] font-bold text-slate-400 group-hover/card:text-[#c3122e] group-hover/card:translate-x-0.5 transition-all duration-200">
+                            View
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </span>
                     </div>
                     <p class="font-bold text-[#0f172a] text-sm truncate">{{ $summary['name'] }}</p>
                     

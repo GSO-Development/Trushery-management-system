@@ -28,8 +28,6 @@ new #[Layout('layouts.admin')] class extends Component
     public ?int $companyId = null;
     public ?int $groupId = null;
     public bool $isAdmin = false;
-    public bool $isCeo = false;
-    public array $ceoCompanyIds = []; // multi-company for CEO
 
     // Azure AD Tenant search state
     public string $azureQuery = '';
@@ -101,18 +99,24 @@ new #[Layout('layouts.admin')] class extends Component
                 ->latest()
                 ->paginate(10),
             'companies'       => Company::all(),
-            'groups'          => Group::when($this->companyId, fn($q) => $q->where('company_id', $this->companyId)->orWhere('group_type', 'group'))->orderBy('name')->get(),
+            'groups' => $this->companyId
+                ? Group::where('group_type', 'individual')
+                       ->where('company_id', $this->companyId)
+                       ->orderBy('name')
+                       ->get()
+                : Group::where('group_type', 'group')
+                       ->orderBy('name')
+                       ->get(),
             'allFilterGroups' => Group::with('company')->orderBy('name')->get(),
         ];
     }
 
     public function openCreate(): void
     {
-        $this->reset('userId', 'name', 'email', 'password', 'passwordConfirmation', 'companyId', 'groupId', 'ceoCompanyIds', 'azureQuery', 'azureUsers', 'selectedAzureUser', 'azureValidated');
+        $this->reset('userId', 'name', 'email', 'password', 'passwordConfirmation', 'companyId', 'groupId', 'azureQuery', 'azureUsers', 'selectedAzureUser', 'azureValidated');
         $this->authProvider = 'microsoft';
-        $this->isAdmin      = false;
-        $this->isCeo        = false;
-        $this->showModal    = true;
+        $this->isAdmin   = false;
+        $this->showModal = true;
     }
 
     public function openEdit(int $id): void
@@ -124,9 +128,7 @@ new #[Layout('layouts.admin')] class extends Component
         $this->authProvider   = $user->auth_provider ?? 'local';
         $this->companyId      = $user->company_id;
         $this->groupId        = $user->group_id;
-        $this->isAdmin        = $user->is_admin;
-        $this->isCeo          = $user->is_ceo;
-        $this->ceoCompanyIds  = $user->ceoCompanies->pluck('id')->map(fn($id) => (string)$id)->toArray();
+        $this->isAdmin = $user->is_admin;
         $this->password       = '';
         $this->passwordConfirmation = '';
         $this->azureQuery     = $user->email;
@@ -136,15 +138,22 @@ new #[Layout('layouts.admin')] class extends Component
         $this->showModal      = true;
     }
 
+    public function updatedCompanyId(): void
+    {
+        // Reset group when company changes to avoid cross-company group selection
+        $this->groupId = null;
+    }
+
     public function saveUser(): void
     {
-        $isCeo = $this->isCeo;
+        // Derive CEO status from the selected group's type instead of manual checkbox
+        $selectedGroup = $this->groupId ? \App\Models\Group::find($this->groupId) : null;
+        $isCeo         = $selectedGroup && $selectedGroup->group_type === 'group';
 
         if ($this->authProvider === 'microsoft') {
             $rules = [
                 'email'   => 'required|email|max:255|unique:users,email,' . ($this->userId ?? 'NULL'),
                 'isAdmin' => 'boolean',
-                'isCeo'   => 'boolean',
             ];
             if (! $isCeo) {
                 $rules['companyId'] = 'nullable|exists:companies,id';
@@ -173,7 +182,7 @@ new #[Layout('layouts.admin')] class extends Component
                 'name'          => Str::title(str_replace('.', ' ', $name)),
                 'email'         => $this->email,
                 'company_id'    => $isCeo ? null : $this->companyId,
-                'group_id'      => $isCeo ? null : $this->groupId,
+                'group_id'      => $this->groupId,
                 'is_admin'      => $this->isAdmin,
                 'is_ceo'        => $isCeo,
                 'auth_provider' => 'microsoft',
@@ -187,7 +196,6 @@ new #[Layout('layouts.admin')] class extends Component
                 'name'    => 'required|string|max:255',
                 'email'   => 'required|email|max:255|unique:users,email,' . ($this->userId ?? 'NULL'),
                 'isAdmin' => 'boolean',
-                'isCeo'   => 'boolean',
             ];
             if (! $isCeo) {
                 $rules['companyId'] = 'nullable|exists:companies,id';
@@ -205,7 +213,7 @@ new #[Layout('layouts.admin')] class extends Component
                 'name'          => $this->name,
                 'email'         => $this->email,
                 'company_id'    => $isCeo ? null : $this->companyId,
-                'group_id'      => $isCeo ? null : $this->groupId,
+                'group_id'      => $this->groupId,
                 'is_admin'      => $this->isAdmin,
                 'is_ceo'        => $isCeo,
                 'auth_provider' => 'local',
@@ -219,16 +227,19 @@ new #[Layout('layouts.admin')] class extends Component
         if ($this->userId) {
             $user = User::findOrFail($this->userId);
             $user->update($data);
-            if ($isCeo) {
-                $user->ceoCompanies()->sync(array_map('intval', $this->ceoCompanyIds));
+            if ($isCeo && $selectedGroup) {
+                // Sync CEO companies from the Multi-Company group's assigned companies
+                $groupCompanyIds = $selectedGroup->getAssignedCompanies()->pluck('id')->toArray();
+                $user->ceoCompanies()->sync($groupCompanyIds);
             } else {
                 $user->ceoCompanies()->sync([]);
             }
             session()->flash('success', 'User updated successfully.');
         } else {
             $user = User::create($data);
-            if ($isCeo) {
-                $user->ceoCompanies()->sync(array_map('intval', $this->ceoCompanyIds));
+            if ($isCeo && $selectedGroup) {
+                $groupCompanyIds = $selectedGroup->getAssignedCompanies()->pluck('id')->toArray();
+                $user->ceoCompanies()->sync($groupCompanyIds);
             }
             session()->flash('success', 'User created successfully.');
         }
@@ -371,14 +382,22 @@ new #[Layout('layouts.admin')] class extends Component
 
     <!-- ── Responsive User Form Modal Popup ────────────────────────── -->
     @if($showModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-xl my-8 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto">
+            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl md:max-w-3xl my-auto overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-[#f8fafc] flex-shrink-0">
-                    <h3 class="font-bold text-[#0f172a] text-base">
-                        {{ $userId ? 'Edit User Account' : 'Add New User' }}
-                    </h3>
-                    <button wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#c3122e] font-bold text-lg flex-shrink-0">
+                            👤
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-[#0f172a] text-base sm:text-lg tracking-tight">
+                                {{ $userId ? 'Edit User Account' : 'Add New User' }}
+                            </h3>
+                            <p class="text-[11px] text-slate-400">Configure user authentication, sub-company, and access group permissions.</p>
+                        </div>
+                    </div>
+                    <button wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 p-2 rounded-xl transition-colors flex-shrink-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -552,35 +571,7 @@ new #[Layout('layouts.admin')] class extends Component
                             </div>
                         @endif
 
-                        <!-- CEO Dashboard Checkbox -->
-                        <div class="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200 pt-2 border-t border-slate-100">
-                            <input wire:model.live="isCeo" type="checkbox" id="is-ceo-check"
-                                class="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-400">
-                            <div>
-                                <label for="is-ceo-check" class="text-xs font-semibold text-[#0f172a]">CEO Dashboard Access</label>
-                                <p class="text-[11px] text-slate-500">CEO users can view consolidated data from multiple companies.</p>
-                            </div>
-                        </div>
-
-                        <!-- CEO: Multi-Company selector -->
-                        @if($isCeo)
-                            <div class="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
-                                <label class="block text-xs font-semibold text-slate-700 mb-2">Assigned Companies <span class="text-red-500">*</span></label>
-                                <p class="text-[11px] text-slate-500 mb-3">Select all companies this CEO can view.</p>
-                                <div class="grid grid-cols-2 gap-2">
-                                    @foreach($companies as $company)
-                                        <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-amber-400 transition-all
-                                            {{ in_array((string)$company->id, $ceoCompanyIds) ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-200' : 'bg-white' }}">
-                                            <input wire:model.live="ceoCompanyIds" type="checkbox"
-                                                value="{{ $company->id }}"
-                                                class="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-400">
-                                            <span class="text-xs font-medium text-[#0f172a]">{{ $company->name }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            <!-- Regular: Company & Group Selection -->
+                        <!-- Regular: Company & Group Selection -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-700 mb-1">Sub-Company</label>
@@ -622,17 +613,44 @@ new #[Layout('layouts.admin')] class extends Component
                                     @endif
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Access Group</label>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                        Access Group
+                                        @if(!$companyId)
+                                            <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase">Multi-Company</span>
+                                        @else
+                                            <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-[#c3122e] uppercase">Sub-Company Only</span>
+                                        @endif
+                                    </label>
                                     <select wire:model="groupId"
-                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] bg-white">
-                                        <option value="">No Group Assigned</option>
-                                        @foreach($groups as $group)
-                                            <option value="{{ $group->id }}">{{ $group->name }}</option>
-                                        @endforeach
+                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] bg-white font-semibold cursor-pointer">
+                                        <option value="">-- Select Access Group --</option>
+                                        @forelse($groups as $group)
+                                            <option value="{{ $group->id }}">
+                                                {{ $group->name }}
+                                                @if($group->group_type === 'group') (Multi-Company) @endif
+                                            </option>
+                                        @empty
+                                            <option value="" disabled>No groups available for this selection</option>
+                                        @endforelse
                                     </select>
+                                    @if(!$companyId)
+                                        <p class="text-[11px] text-amber-700 mt-1.5 flex items-center gap-1">
+                                            <span>⚡</span>
+                                            <span>Multi-Company Groups grant executive access across all assigned sub-companies. <strong>is_ceo</strong> will be set automatically.</span>
+                                        </p>
+                                    @elseif($companyId && $groups->isEmpty())
+                                        <p class="text-[11px] text-red-600 mt-1.5 flex items-center gap-1">
+                                            <span>⚠️</span>
+                                            <span>No Individual groups found for this Sub-Company. <a href="/admin/groups" class="underline font-bold">Create one first</a>.</span>
+                                        </p>
+                                    @else
+                                        <p class="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+                                            <span>ℹ️</span>
+                                            <span>Only Individual groups assigned to the selected Sub-Company are shown.</span>
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
-                        @endif
 
                         <!-- Admin Access Toggle -->
                         <div class="flex items-center gap-3 p-3.5 rounded-xl bg-[#fdf2f4] border border-[#f8d7da]">
@@ -650,11 +668,11 @@ new #[Layout('layouts.admin')] class extends Component
                 <!-- Modal Footer -->
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-[#f8fafc] flex-shrink-0">
                     <button type="button" wire:click="$set('showModal', false)"
-                        class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-sm font-medium transition-colors">
+                        class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-bold transition-all cursor-pointer">
                         Cancel
                     </button>
                     <button type="submit" form="userForm"
-                        class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-sm font-semibold transition-colors shadow-sm shadow-[#c3122e]/20">
+                        class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs sm:text-sm font-extrabold transition-all shadow-md shadow-[#c3122e]/25 cursor-pointer">
                         <svg wire:loading wire:target="saveUser" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>

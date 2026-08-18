@@ -46,6 +46,29 @@
         </div>
     </div>
 
+    {{-- Company Quick-Switch Strip (visible when user has multiple companies) --}}
+    @if($accessibleCompanies->count() > 1)
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0 pr-1">Switch:</span>
+        @foreach($accessibleCompanies as $acc)
+            @php $isActive = $acc->slug === $company->slug; @endphp
+            <a href="{{ route('group.company.dashboard', $acc->slug) }}"
+               class="flex-shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150
+                      {{ $isActive
+                          ? 'bg-[#c3122e] text-white shadow-md shadow-[#c3122e]/20 ring-2 ring-[#c3122e]/20'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:border-[#c3122e]/40 hover:text-[#c3122e] hover:bg-red-50/60' }}">
+                <span class="w-5 h-5 rounded-md {{ $isActive ? 'bg-white/20' : 'bg-slate-100' }} flex items-center justify-center font-black text-[10px]">
+                    {{ strtoupper(substr($acc->name, 0, 2)) }}
+                </span>
+                <span class="truncate max-w-[120px]">{{ $acc->name }}</span>
+                @if($isActive)
+                    <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                @endif
+            </a>
+        @endforeach
+    </div>
+    @endif
+
     {{-- Top 4 Core Treasury KPI Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 

@@ -398,188 +398,218 @@ new #[Layout('layouts.admin')] class extends Component
         </div>
     </div>
 
-    <!-- Modal Form (Create / Edit Group) -->
+        <!-- Modal Form (Create / Edit Group) — 100% Fully Responsive -->
     @if($showModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto"
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto"
              x-data
              @keydown.escape.window="$wire.set('showModal', false)">
-            <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-xl p-6 relative overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl md:max-w-3xl my-auto overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
                 
-                <!-- Modal Header -->
-                <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-                    <div>
-                        <h3 class="font-bold text-[#0f172a] text-lg">
-                            {{ $editingId ? 'Edit Access Group' : 'Add New Access Group' }}
-                        </h3>
-                        <p class="text-xs text-slate-400">Configure access level, sub-company permissions &amp; email alert dispatches.</p>
+                <!-- Modal Header (Sticky Top) -->
+                <div class="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-[#f8fafc] flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#c3122e] font-bold text-lg flex-shrink-0">
+                            👥
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-[#0f172a] text-base sm:text-lg tracking-tight">
+                                {{ $editingId ? 'Edit Access Group' : 'Add New Access Group' }}
+                            </h3>
+                            <p class="text-[11px] sm:text-xs text-slate-400">Configure access level, sub-company permissions &amp; automated email dispatches.</p>
+                        </div>
                     </div>
-                    <button wire:click="$set('showModal', false)" class="text-slate-400 hover:text-slate-600 p-1 text-lg font-bold leading-none cursor-pointer">
+                    <button wire:click="$set('showModal', false)" 
+                        class="text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 p-2 rounded-xl text-lg font-bold leading-none transition-colors cursor-pointer flex-shrink-0">
                         ✕
                     </button>
                 </div>
 
-                <!-- Form Content -->
-                <form wire:submit="save" class="space-y-4">
-                    
-                    <!-- Group Level Type Radio Buttons -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-2">Group Access Level <span class="text-red-500">*</span></label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all {{ $groupType === 'individual' ? 'border-[#c3122e] bg-[#fdf2f4]/60 ring-2 ring-[#c3122e]/20' : 'border-slate-200 hover:border-slate-300' }}">
-                                <input wire:model.live="groupType" type="radio" value="individual" class="mt-0.5 text-[#c3122e] focus:ring-[#c3122e]">
-                                <div>
-                                    <p class="text-xs font-bold text-[#0f172a]">Individual Sub-Company</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">Assigned to a single Sub-Company with granular page permissions.</p>
-                                </div>
-                            </label>
-
-                            <label class="flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all {{ $groupType === 'group' ? 'border-[#c3122e] bg-[#fdf2f4]/60 ring-2 ring-[#c3122e]/20' : 'border-slate-200 hover:border-slate-300' }}">
-                                <input wire:model.live="groupType" type="radio" value="group" class="mt-0.5 text-[#c3122e] focus:ring-[#c3122e]">
-                                <div>
-                                    <p class="text-xs font-bold text-[#0f172a]">Multi-Company (CEO / Executive)</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">Assigned to multiple Sub-Companies with executive overview &amp; comparison access.</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Group Name -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">
-                            Group Name <span class="text-red-500">*</span>
-                        </label>
-                        <input wire:model="name" type="text"
-                            placeholder="{{ $groupType === 'group' ? 'e.g. Executive Board, Group Treasury, CEO Level' : 'e.g. Finance, Cashier, Operations, General User' }}"
-                            required
-                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e]">
-                        @error('name') <p class="text-xs text-red-500 mt-1 font-semibold">{{ $message }}</p> @enderror
-                    </div>
-
-                    <!-- 1. INDIVIDUAL SUB-COMPANY FORM -->
-                    @if($groupType === 'individual')
+                <!-- Form Content (Scrollable Middle) -->
+                <div class="p-5 sm:p-6 md:p-7 overflow-y-auto space-y-5 flex-1">
+                    <form wire:submit="save" id="groupForm" class="space-y-5">
+                        
+                        <!-- Group Level Type Radio Buttons (Responsive 1 col on mobile, 2 cols on tablet/desktop) -->
                         <div>
-                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
-                                Sub-Company <span class="text-red-500">*</span>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                Group Access Level <span class="text-red-500">*</span>
                             </label>
-                            <select wire:model.live="companyId" required
-                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] bg-white text-slate-800">
-                                <option value="">-- Select Sub-Company --</option>
-                                @foreach($companies as $company)
-                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('companyId') <p class="text-xs text-red-500 mt-1 font-semibold">{{ $message }}</p> @enderror
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label class="flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all {{ $groupType === 'individual' ? 'border-[#c3122e] bg-[#fdf2f4]/60 ring-2 ring-[#c3122e]/20 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50' }}">
+                                    <input wire:model.live="groupType" type="radio" value="individual" class="mt-1 text-[#c3122e] focus:ring-[#c3122e] w-4 h-4">
+                                    <div class="min-w-0">
+                                        <p class="text-xs sm:text-sm font-extrabold text-[#0f172a] flex items-center gap-1.5">
+                                            <span>🏢 Individual Sub-Company</span>
+                                        </p>
+                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Assigned to a single Sub-Company with granular page permissions.</p>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-start gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all {{ $groupType === 'group' ? 'border-[#c3122e] bg-[#fdf2f4]/60 ring-2 ring-[#c3122e]/20 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50' }}">
+                                    <input wire:model.live="groupType" type="radio" value="group" class="mt-1 text-[#c3122e] focus:ring-[#c3122e] w-4 h-4">
+                                    <div class="min-w-0">
+                                        <p class="text-xs sm:text-sm font-extrabold text-[#0f172a] flex items-center gap-1.5">
+                                            <span>🏢+ Multi-Company (CEO / Executive)</span>
+                                        </p>
+                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Assigned to multiple Sub-Companies with executive overview &amp; comparison access.</p>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
 
-                        <!-- Navigation Permissions -->
+                        <!-- Group Name -->
                         <div>
-                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
-                                Navigation Permissions (Blade Views)
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Group Name <span class="text-red-500">*</span>
                             </label>
-                            @if($companyId && count($availableNavPages) > 0)
-                                <div class="space-y-1.5 max-h-48 overflow-y-auto p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                                    @foreach($availableNavPages as $navKey => $navLabel)
+                            <input wire:model="name" type="text"
+                                placeholder="{{ $groupType === 'group' ? 'e.g. Executive Board, Group Treasury, CEO Level' : 'e.g. Finance, Cashier, Operations, General User' }}"
+                                required
+                                class="w-full px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-200 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] transition-all">
+                            @error('name') <p class="text-xs text-red-500 mt-1.5 font-semibold">{{ $message }}</p> @enderror
+                        </div>
+
+                        <!-- 1. INDIVIDUAL SUB-COMPANY FORM -->
+                        @if($groupType === 'individual')
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                        Assign Sub-Company <span class="text-red-500">*</span>
+                                    </label>
+                                    <select wire:model.live="companyId" required
+                                        class="w-full px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#c3122e]/20 focus:border-[#c3122e] bg-white cursor-pointer transition-all">
+                                        <option value="">-- Select Sub-Company --</option>
+                                        @foreach($companies as $company)
+                                            <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('companyId') <p class="text-xs text-red-500 mt-1.5 font-semibold">{{ $message }}</p> @enderror
+                                </div>
+
+                                <!-- Navigation Permissions (Responsive Grid of Cards) -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                            Navigation Permissions (Blade Views)
+                                        </label>
+                                        @if($companyId && count($availableNavPages) > 0)
+                                            <span class="text-[11px] font-semibold text-slate-400">
+                                                {{ count($selectedNavKeys) }} of {{ count($availableNavPages) }} selected
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    @if($companyId && count($availableNavPages) > 0)
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-3 rounded-2xl border border-slate-200 bg-slate-50/60">
+                                            @foreach($availableNavPages as $navKey => $navLabel)
+                                                @php
+                                                    $isChecked = in_array($navKey, $selectedNavKeys);
+                                                @endphp
+                                                <label class="flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer {{ $isChecked ? 'border-[#c3122e] bg-[#fdf2f4]/80 ring-1 ring-[#c3122e]/30 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300' }}">
+                                                    <input wire:model="selectedNavKeys" type="checkbox" value="{{ $navKey }}"
+                                                        class="rounded text-[#c3122e] focus:ring-[#c3122e] w-4 h-4 flex-shrink-0">
+                                                    <div class="min-w-0 flex-1 truncate">
+                                                        <p class="text-xs font-bold text-[#0f172a] truncate">{{ $navLabel }}</p>
+                                                        <p class="text-[10px] text-slate-400 font-mono truncate">{{ $navKey }}</p>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @elseif($companyId)
+                                        <div class="p-3.5 rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-medium">
+                                            No custom views found in <span class="font-mono">views/livewire/tenant/{{ $companies->find($companyId)->slug ?? '' }}/</span>. Default navigation keys will apply.
+                                        </div>
+                                    @else
+                                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center text-xs text-slate-400 italic">
+                                            👉 Select a Sub-Company above to configure allowed blade views and pages for this group.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                        <!-- 2. MULTI-COMPANY (GROUP / CEO) FORM -->
+                        @else
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Select Sub-Companies for this Group <span class="text-red-500">*</span>
+                                    </label>
+                                    <button type="button" wire:click="toggleSelectAllCompanies"
+                                        class="px-2.5 py-1 rounded-lg bg-red-50 text-xs text-[#c3122e] hover:bg-red-100 font-bold transition-colors cursor-pointer">
+                                        {{ count($selectedCompanyIds) === $companies->count() ? '✕ Deselect All' : '✓ Select All (' . $companies->count() . ')' }}
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto p-3 rounded-2xl border border-slate-200 bg-slate-50/60">
+                                    @foreach($companies as $company)
                                         @php
-                                            $isChecked = in_array($navKey, $selectedNavKeys);
+                                            $isCompChecked = in_array((string)$company->id, $selectedCompanyIds);
                                         @endphp
-                                        <label class="flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer {{ $isChecked ? 'border-[#c3122e] bg-[#fdf2f4]/60' : 'border-slate-200 bg-white hover:border-slate-300' }}">
-                                            <input wire:model="selectedNavKeys" type="checkbox" value="{{ $navKey }}"
-                                                class="rounded text-[#c3122e] focus:ring-[#c3122e] w-4 h-4">
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-xs font-bold text-[#0f172a] truncate">{{ $navLabel }}</p>
-                                                <p class="text-[10px] text-slate-400 font-mono truncate">views/livewire/tenant/{{ $companies->find($companyId)->slug ?? '' }}/{{ $navKey }}.blade.php</p>
+                                        <label class="flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer {{ $isCompChecked ? 'border-[#c3122e] bg-[#fdf2f4]/80 ring-1 ring-[#c3122e]/30 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300' }}">
+                                            <div class="flex items-center gap-2.5 min-w-0 flex-1 truncate">
+                                                <input wire:model.live="selectedCompanyIds" type="checkbox" value="{{ (string)$company->id }}"
+                                                    class="rounded text-[#c3122e] focus:ring-[#c3122e] w-4 h-4 flex-shrink-0">
+                                                <div class="truncate">
+                                                    <p class="text-xs font-bold text-[#0f172a] truncate">{{ $company->name }}</p>
+                                                    <p class="text-[10px] text-slate-400 font-mono">/{{ $company->slug }}</p>
+                                                </div>
                                             </div>
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 flex-shrink-0 font-mono ml-2">
+                                                {{ $company->banks->count() }} Banks
+                                            </span>
                                         </label>
                                     @endforeach
                                 </div>
-                            @elseif($companyId)
-                                <div class="p-3.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-medium">
-                                    No views found in <span class="font-mono">views/livewire/tenant/{{ $companies->find($companyId)->slug ?? '' }}/</span>. Creating this company will auto-scaffold view stubs.
-                                </div>
-                            @else
-                                <p class="text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    Select a Sub-Company above to configure allowed blade views and pages for this group.
-                                </p>
-                            @endif
-                        </div>
+                                @error('selectedCompanyIds') <p class="text-xs text-red-500 mt-1 font-semibold">{{ $message }}</p> @enderror
 
-                    <!-- 2. MULTI-COMPANY (GROUP / CEO) FORM -->
-                    @else
-                        <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="block text-xs font-semibold text-slate-700">
-                                    Select Sub-Companies for this Group <span class="text-red-500">*</span>
-                                </label>
-                                <button type="button" wire:click="toggleSelectAllCompanies"
-                                    class="text-xs text-[#c3122e] hover:underline font-semibold cursor-pointer">
-                                    {{ count($selectedCompanyIds) === $companies->count() ? 'Deselect All' : 'Select All (' . $companies->count() . ')' }}
-                                </button>
-                            </div>
-
-                            <div class="space-y-1.5 max-h-56 overflow-y-auto p-3 rounded-xl border border-slate-200 bg-slate-50/50">
-                                @foreach($companies as $company)
-                                    @php
-                                        $isCompChecked = in_array((string)$company->id, $selectedCompanyIds);
-                                    @endphp
-                                    <label class="flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer {{ $isCompChecked ? 'border-[#c3122e] bg-[#fdf2f4]/60 ring-1 ring-[#c3122e]/30' : 'border-slate-200 bg-white hover:border-slate-300' }}">
-                                        <div class="flex items-center gap-3 min-w-0">
-                                            <input wire:model.live="selectedCompanyIds" type="checkbox" value="{{ (string)$company->id }}"
-                                                class="rounded text-[#c3122e] focus:ring-[#c3122e] w-4 h-4">
-                                            <div class="truncate">
-                                                <p class="text-xs font-bold text-[#0f172a] truncate">{{ $company->name }}</p>
-                                                <p class="text-[10px] text-slate-400 font-mono">/{{ $company->slug }}</p>
-                                            </div>
-                                        </div>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 flex-shrink-0">
-                                            {{ $company->banks->count() }} Banks
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('selectedCompanyIds') <p class="text-xs text-red-500 mt-1 font-semibold">{{ $message }}</p> @enderror
-
-                            <!-- Info Banner -->
-                            <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-                                <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <div>
-                                    <p class="font-bold">Multi-Company Group Privileges:</p>
-                                    <p class="text-amber-800 text-[11px] mt-0.5">Users in this group can view the Group Executive Overview Dashboard, Comparison Analytics, and individual executive views for the selected sub-companies.</p>
+                                <!-- Info Banner -->
+                                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                                    <svg class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <div>
+                                        <p class="font-extrabold">Multi-Company Group Privileges:</p>
+                                        <p class="text-amber-800 text-[11px] mt-0.5 leading-relaxed">Users in this group can view the Group Executive Overview Dashboard, Comparison Analytics, and individual executive views for the selected sub-companies.</p>
+                                    </div>
                                 </div>
                             </div>
+                        @endif
+
+                        <!-- Universal Email Notifications Checkbox -->
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-slate-100 transition-colors">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input wire:model="emailNotificationsEnabled" type="checkbox"
+                                    class="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#c3122e] focus:ring-[#c3122e]">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs font-bold text-[#0f172a] flex flex-wrap items-center gap-1.5">
+                                        <span>✉️ Enable Automated Email Notifications for this Group</span>
+                                        @if($emailNotificationsEnabled)
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">Active</span>
+                                        @endif
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                        When checked, active users in this group will receive automatic email reminders for facility expiries, working capital due dates &amp; loan reviews for their accessible companies.
+                                    </p>
+                                </div>
+                            </label>
                         </div>
-                    @endif
 
-                    <!-- Universal Email Notifications Checkbox -->
-                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/70 transition-colors">
-                        <label class="flex items-start gap-3 cursor-pointer">
-                            <input wire:model="emailNotificationsEnabled" type="checkbox"
-                                class="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#c3122e] focus:ring-[#c3122e]">
-                            <div>
-                                <p class="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
-                                    <span>✉️ Enable Automated Email Notifications for this Group</span>
-                                    @if($emailNotificationsEnabled)
-                                        <span class="px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">Enabled</span>
-                                    @endif
-                                </p>
-                                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                    When checked, active users in this group will receive automatic email notifications for facility expiries, working capital due dates &amp; loan reviews for their accessible companies.
-                                </p>
-                            </div>
-                        </label>
-                    </div>
+                    </form>
+                </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-                        <button type="button" wire:click="$set('showModal', false)"
-                            class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                            class="px-6 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs font-bold transition-all shadow-md shadow-[#c3122e]/20 cursor-pointer">
-                            {{ $editingId ? 'Save Changes' : 'Create Group' }}
-                        </button>
-                    </div>
-                </form>
+                <!-- Modal Footer (Sticky Bottom Actions) -->
+                <div class="flex items-center justify-end gap-3 px-5 sm:px-6 py-4 border-t border-slate-100 bg-[#f8fafc] flex-shrink-0">
+                    <button type="button" wire:click="$set('showModal', false)"
+                        class="px-4 sm:px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-bold transition-all cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" form="groupForm"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#c3122e] hover:bg-[#9e0e24] text-white text-xs sm:text-sm font-extrabold transition-all shadow-md shadow-[#c3122e]/25 cursor-pointer">
+                        <svg wire:loading wire:target="save" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        {{ $editingId ? 'Save Changes' : 'Create Group' }}
+                    </button>
+                </div>
+
             </div>
         </div>
     @endif
