@@ -22,36 +22,45 @@ class DatabaseSeeder extends Seeder
         // 1. SEED ALL BANKS (from Excel sheet — all banks actually used)
         // ═════════════════════════════════════════════════════════════════════
         $sriLankaBanks = [
-            // Core banks from Excel
-            ['name' => 'Bank of Ceylon',                  'short_name' => 'BOC',        'bank_code' => '7010', 'swift_code' => 'BCEYLKLX'],
-            ['name' => 'People\'s Bank',                  'short_name' => 'PB',          'bank_code' => '7135', 'swift_code' => 'PSBKLKLX'],
-            ['name' => 'Hatton National Bank',             'short_name' => 'HNB',         'bank_code' => '7083', 'swift_code' => 'HNBNLKLX'],
-            ['name' => 'Sampath Bank',                    'short_name' => 'SAMPATH',     'bank_code' => '7278', 'swift_code' => 'BSAMLKLX'],
-            ['name' => 'National Development Bank',       'short_name' => 'NDB',         'bank_code' => '7214', 'swift_code' => 'NDBLLKLX'],
-            ['name' => 'Seylan Bank',                     'short_name' => 'SEYLAN',      'bank_code' => '7287', 'swift_code' => 'SEYBLKLX'],
-            ['name' => 'Nations Trust Bank',              'short_name' => 'NTB',         'bank_code' => '7162', 'swift_code' => 'NTBLLKLX'],
-            ['name' => 'DFCC Bank',                       'short_name' => 'DFCC',        'bank_code' => '7454', 'swift_code' => 'DFCCLKLX'],
-            ['name' => 'Pan Asia Banking Corporation',    'short_name' => 'PABC',        'bank_code' => '7311', 'swift_code' => 'PABLLKLX'],
-            ['name' => 'Union Bank of Colombo',           'short_name' => 'UNION',       'bank_code' => '7302', 'swift_code' => 'UBCOLKLX'],
-            ['name' => 'Cargills Bank',                   'short_name' => 'CARGILLS',    'bank_code' => '7472', 'swift_code' => 'CGILLKLX'],
-            ['name' => 'NDB Wealth Management',           'short_name' => 'NDB WEALTH',  'bank_code' => '7215', 'swift_code' => 'NDBLLKLX'],
-            // Other Sri Lanka banks
-            ['name' => 'Commercial Bank of Ceylon',      'short_name' => 'COMBANK',     'bank_code' => '7056', 'swift_code' => 'CCEYLKLX'],
-            ['name' => 'HSBC Sri Lanka',                 'short_name' => 'HSBC',        'bank_code' => '7092', 'swift_code' => 'HSBCLKLX'],
-            ['name' => 'Standard Chartered Bank',        'short_name' => 'SCB',         'bank_code' => '7038', 'swift_code' => 'SCBLLKLX'],
-            ['name' => 'GS & C (Intercompany)',          'short_name' => 'GS&C',        'bank_code' => 'GSC01','swift_code' => null],
-            ['name' => 'GS Travel (Intercompany)',       'short_name' => 'GST-IC',      'bank_code' => 'GST01','swift_code' => null],
+            ['name' => 'Bank of Ceylon',                  'short_name' => 'BOC',        'bank_code' => '7010'],
+            ['name' => 'People\'s Bank',                  'short_name' => 'PEOPLES',    'bank_code' => '7135'],
+            ['name' => 'Commercial Bank of Ceylon',      'short_name' => 'COMBANK',    'bank_code' => '7056'],
+            ['name' => 'Hatton National Bank',             'short_name' => 'HNB',        'bank_code' => '7083'],
+            ['name' => 'Sampath Bank',                    'short_name' => 'SAMPATH',    'bank_code' => '7278'],
+            ['name' => 'National Development Bank',       'short_name' => 'NDB',        'bank_code' => '7214'],
+            ['name' => 'Seylan Bank',                     'short_name' => 'SEYLAN',     'bank_code' => '7287'],
+            ['name' => 'Nations Trust Bank',              'short_name' => 'NTB',        'bank_code' => '7162'],
+            ['name' => 'DFCC Bank',                       'short_name' => 'DFCC',       'bank_code' => '7454'],
+            ['name' => 'Pan Asia Banking Corporation',    'short_name' => 'PABC',       'bank_code' => '7311'],
+            ['name' => 'Union Bank of Colombo',           'short_name' => 'UNION',      'bank_code' => '7302'],
+            ['name' => 'Amana Bank',                      'short_name' => 'AMANA',      'bank_code' => '7463'],
+            ['name' => 'Cargills Bank',                   'short_name' => 'CARGILLS',   'bank_code' => '7472'],
+            ['name' => 'HSBC Sri Lanka',                 'short_name' => 'HSBC',       'bank_code' => '7092'],
+            ['name' => 'Standard Chartered Bank',        'short_name' => 'SCB',        'bank_code' => '7038'],
+            ['name' => 'Citibank Sri Lanka',              'short_name' => 'CITI',       'bank_code' => '7047'],
+            ['name' => 'State Bank of India',             'short_name' => 'SBI',        'bank_code' => '7144'],
+            ['name' => 'Indian Bank',                     'short_name' => 'INDIAN',     'bank_code' => '7108'],
+            ['name' => 'Habib Bank',                      'short_name' => 'HABIB',      'bank_code' => '7074'],
+            ['name' => 'MCB Bank',                        'short_name' => 'MCB',        'bank_code' => '7205'],
+            ['name' => 'NDB Wealth Management',           'short_name' => 'NDBWM',      'bank_code' => '7215'],
+            ['name' => 'GS & C (Intercompany)',          'short_name' => 'GSC',        'bank_code' => 'GSC01'],
+            ['name' => 'GS Travel (Intercompany)',       'short_name' => 'GST',        'bank_code' => 'GST01'],
+            ['name' => 'Union Bank PLC',                  'short_name' => 'UBPL',       'bank_code' => 'UBPL'],
         ];
 
-        $bankMap = []; // short_name => Bank model
+        $bankMap = [];
         foreach ($sriLankaBanks as $bData) {
-            $bank = Bank::firstOrCreate(
+            $bank = Bank::updateOrCreate(
                 ['bank_code' => $bData['bank_code']],
-                ['name' => $bData['name']]
+                [
+                    'name'       => $bData['name'],
+                    'short_name' => $bData['short_name'],
+                    'is_active'  => true,
+                ]
             );
             $bankMap[$bData['short_name']] = $bank;
-            // also map trimmed common abbreviations
             $bankMap[trim($bData['short_name'])] = $bank;
+            $bankMap[$bData['name']] = $bank;
         }
 
         // ═════════════════════════════════════════════════════════════════════
